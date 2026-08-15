@@ -1,0 +1,83 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: Canvas;
+  color: CanvasText;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #999;
+}
+.dot.idle { background: #999; }
+.dot.listening { background: #e5484d; box-shadow: 0 0 6px #e5484d; }
+.dot.error { background: #f5a623; }
+
+#toggle-btn {
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  background: #2f6feb;
+  color: white;
+  cursor: pointer;
+}
+#toggle-btn.listening {
+  background: #e5484d;
+}
+
+#history {
+  flex: 1;
+  min-height: 200px;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+}
+#history .hint {
+  opacity: 0.6;
+  font-style: italic;
+}
+#history .line {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+}
+#history .line .ts {
+  opacity: 0.5;
+  font-size: 11px;
+  margin-right: 6px;
+}
+
+details#settings {
+  font-size: 12px;
+}
+details#settings input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 4px;
+  padding: 4px 6px;
+}
+details#settings label {
+  display: block;
+  margin-top: 8px;
+}

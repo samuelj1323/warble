@@ -1,0 +1,8 @@
+# Training deps for Colab/Kaggle (pip). Local dev uses pyproject.toml via uv.
+torch>=2.6
+transformers>=4.49
+datasets>=3.2
+accelerate>=1.2
+jiwer>=3.0
+soundfile>=0.13
+librosa>=0.10

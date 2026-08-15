@@ -1,0 +1,552 @@
+# Warble prompt list. One sentence per line. Lines starting with # are ignored.
+# TIP: edit Section E to include YOUR name, your city, your coworkers' names,
+# and words you say often. Personalized prompts make the model better for you.
+
+# === Section A: phonetically balanced ===
+The birch canoe slid on the smooth planks.
+Glue the sheet to the dark blue background.
+It's easy to tell the depth of a well.
+These days a chicken leg is a rare dish.
+Rice is often served in round bowls.
+The juice of lemons makes fine punch.
+The box was thrown beside the parked truck.
+The hogs were fed chopped corn and garbage.
+Four hours of steady work faced us.
+A large size in stockings is hard to sell.
+The boy was there when the sun rose.
+A rod is used to catch pink salmon.
+The source of the huge river is the clear spring.
+Kick the ball straight and follow through.
+Help the woman get back to her feet.
+A pot of tea helps to pass the evening.
+Smoky fires lack flame and heat.
+The soft cushion broke the man's fall.
+The salt breeze came across from the sea.
+The girl at the booth sold fifty bonds.
+The small pup gnawed a hole in the sock.
+The fish twisted and turned on the bent hook.
+Press the pants and sew a button on the vest.
+The swan dive was far short of perfect.
+The beauty of the view stunned the young boy.
+Two blue fish swam in the tank.
+Her purse was full of useless trash.
+The colt reared and threw the tall rider.
+It snowed, rained, and hailed the same morning.
+Read verse out loud for pleasure.
+Hoist the load to your left shoulder.
+Take the winding path to reach the lake.
+Note closely the size of the gas tank.
+Wipe the grease off his dirty face.
+Mend the coat before you go out.
+The wrist was badly strained and hung limp.
+The stray cat gave birth to kittens.
+The young girl gave no clear response.
+The meal was cooked before the bell rang.
+What joy there is in living.
+A king ruled the state in the early days.
+The ship was torn apart on the sharp reef.
+Sickness kept him home the third week.
+The wide road shimmered in the hot sun.
+The lazy cow lay in the cool grass.
+Lift the square stone over the fence.
+The rope will bind the seven books at once.
+Hop over the fence and plunge in.
+The friendly gang left the drug store.
+Mesh wire keeps chicks inside.
+The frosty air passed through the coat.
+The crooked maze failed to fool the mouse.
+Adding fast leads to wrong sums.
+The show was a flop from the very start.
+A saw is a tool used for making boards.
+The wagon moved on well oiled wheels.
+March the soldiers past the next hill.
+A cup of sugar makes sweet fudge.
+Place a rosebush near the porch steps.
+Both lost their lives in the raging storm.
+We talked of the sideshow in the circus.
+Use a pencil to write the first draft.
+He ran half way to the hardware store.
+The clock struck to mark the third period.
+A small creek cut across the field.
+Cars and busses stalled in snow drifts.
+The set of china hit the floor with a crash.
+This is a grand season for hikes on the road.
+The dune rose from the edge of the water.
+Those words were the cue for the actor to leave.
+A yacht slid around the point into the bay.
+The two met while playing on the sand.
+The ink stain dried on the finished page.
+The walled town was seized without a fight.
+The lease ran out in sixteen weeks.
+A tame squirrel makes a nice pet.
+The horn of the car woke the sleeping cop.
+The heart beat strongly and with firm strokes.
+The pearl was worn in a thin silver ring.
+The fruit peel was cut in thick slices.
+The Navy attacked the big task force.
+See the cat glaring at the scared mouse.
+There are more than two factors here.
+The hat brim was wide and too droopy.
+The lawyer tried to lose his case.
+The grass curled around the fence post.
+Cut the pie into large parts.
+Men strive but seldom get rich.
+Always close the barn door tight.
+He lay prone and hardly moved a limb.
+The slush lay deep along the street.
+A wisp of cloud hung in the blue air.
+A pound of sugar costs more than eggs.
+The fin was sharp and cut the clear water.
+The play seems dull and quite stupid.
+Bail the boat to stop it from sinking.
+The term ended in late June that year.
+A tusk is used to make costly gifts.
+Ten pins were set in order.
+The bill was paid every third week.
+
+# === Section B: everyday dictation ===
+Hey, are we still on for lunch tomorrow at noon?
+Can you send me that file when you get a chance?
+I'll be there in about ten minutes, just leaving now.
+Don't forget to pick up milk on the way home.
+The meeting got moved to three thirty this afternoon.
+Let's touch base first thing Monday morning.
+I'm running a few minutes late, start without me.
+Thanks for getting back to me so quickly.
+Could you review this before the end of the day?
+That sounds like a great plan, let's do it.
+I'll circle back with you after the call.
+What time works best for you this week?
+Sorry, I missed your call, what's up?
+The package should arrive sometime on Friday.
+Let's grab coffee sometime next week.
+I just sent you the invite, did you get it?
+Can we push the deadline back by a couple of days?
+I'll take care of it first thing tomorrow.
+No worries at all, these things happen.
+Let me know if you need anything else from me.
+The wifi went down again this morning.
+I'm heading out, see you in the morning.
+Did you ever hear back from the landlord?
+We should probably get started on the slides soon.
+I'll forward you the email thread right now.
+Happy birthday! Hope you have a great day.
+The flight lands at eight forty five at night.
+I left my keys on the kitchen counter.
+Traffic is terrible, I might be a while.
+Can you water the plants while we're away?
+The reservation is under the name Johnson.
+I think we left the umbrella at the restaurant.
+What are we doing for dinner tonight?
+I'll put the leftovers in the fridge.
+The dog needs to go to the vet on Saturday.
+Remind me to call the bank in the morning.
+We got the tickets, aisle seats this time.
+The plumber is coming between nine and eleven.
+I booked the hotel for the first weekend of May.
+She said the concert starts at seven sharp.
+Don't let the cat out when you leave.
+The grocery store closes early on Sundays.
+I'll pick you up outside the main entrance.
+We need eggs, bread, butter, and orange juice.
+The meeting room is on the fourth floor.
+He's out of the office until next Tuesday.
+Can you speak a little louder, please?
+The battery on my phone is about to die.
+I'll text you when I'm on my way.
+Subject line: quick question about next week's schedule.
+Hi team, just a friendly reminder about the deadline.
+Following up on our conversation from last week.
+Please find the report attached to this email.
+I wanted to check in on the status of the proposal.
+Let's schedule a call to go over the details.
+Apologies for the delayed response on my end.
+I've cc'd Sarah so she's in the loop.
+Per our discussion, here's the updated timeline.
+Looking forward to hearing your thoughts.
+Let me know if either of those times works.
+I'll keep this short since I know you're busy.
+Thanks again for your help with this project.
+Could you clarify what you meant in your last message?
+The attachment seems to be missing from your email.
+Just bumping this to the top of your inbox.
+Hope you had a nice weekend.
+I'm out sick today but reachable by email.
+Great job on the presentation this morning.
+Do we have any updates on the budget?
+I'll approve it as soon as I get the numbers.
+Note to self: renew the car insurance this month.
+Add eggs and spinach to the shopping list.
+Remember to water the plants twice a week.
+Call mom back when you get a free minute.
+Schedule the dentist appointment for next month.
+The garage door code needs to be changed.
+Take the recycling out on Wednesday night.
+Cancel the free trial before it charges me.
+Renew my library books before Friday.
+Set a reminder to defrost the chicken tonight.
+Pay the electricity bill by the fifteenth.
+Back up the photos from my phone tonight.
+Ask about the warranty when I call support.
+Put the laundry in the dryer in an hour.
+Make a note to book flights before prices go up.
+Pick up the dry cleaning on the way home.
+Return the borrowed ladder this weekend.
+Check the tire pressure before the road trip.
+Water filter needs replacing next month.
+Sign the permission slip for the field trip.
+Renew the parking permit online tonight.
+What's the weather going to be like this weekend?
+How do I get to the nearest hardware store?
+What's a good recipe for chicken soup?
+When does the new season come out?
+How long does it take to boil an egg?
+What's the exchange rate for euros right now?
+Who won the game last night?
+What time does the pharmacy close?
+How do you spell embarrass, is it two r's?
+What's the capital of South Dakota?
+How many tablespoons are in a quarter cup?
+What's the difference between affect and effect?
+When is the next full moon?
+How do I reset my router?
+What's a good book to read on a long flight?
+How far is the airport from downtown?
+What movies are playing at the theater tonight?
+How do you poach an egg without it falling apart?
+What's the score of the game right now?
+When did the first iPhone come out?
+How tall is the Empire State Building?
+What's the fastest way to get to the beach?
+How much does a gallon of paint cover?
+What should I bring to a potluck dinner?
+When do the clocks change this year?
+Okay, so here's what I'm thinking for the party.
+We could do a potluck, or just order pizza.
+Either way, we should start planning soon.
+The kids really want to go camping this summer.
+I'm thinking we drive up Friday after work.
+It's only about three hours each way.
+The campsite has showers, which is a plus.
+We should bring the big tent this time.
+Last year we forgot the can opener.
+Oh, and remind me to buy marshmallows.
+The forecast says it might rain on Saturday.
+We can always bail and come home early.
+I talked to the neighbors about watching the house.
+They said they'd bring in the mail too.
+Anyway, that's the plan for now, what do you think?
+I just finished that show you recommended.
+The ending was completely unexpected.
+No spoilers, but the last episode is wild.
+We should watch the sequel this weekend.
+I started a new book and can't put it down.
+It's about a detective in a small town.
+The writing is a bit slow at first.
+Stick with it, it gets really good.
+I read half of it on the plane.
+The author's earlier books are even better.
+We saw the new exhibit at the museum.
+The photography section was my favorite.
+It's only open until the end of the month.
+Tickets were cheaper online than at the door.
+The gallery was packed on Saturday.
+I'd go back just for the sculpture garden.
+The coffee shop on Fifth has live music now.
+Their pastries are worth the trip alone.
+I tried the oat milk latte, not bad at all.
+The line was out the door this morning.
+They roast their own beans in the back.
+I ran into an old friend from college there.
+We hadn't seen each other in five years.
+She's living out in Denver now.
+We promised to keep in touch this time.
+Small world, she knows my cousin.
+The game went into double overtime.
+Our team finally won a home game.
+The rookie scored twice in the third period.
+The referee made a terrible call.
+We had great seats right behind home plate.
+The stadium was completely sold out.
+I'm thinking about joining a rec league.
+My knees can't handle basketball anymore.
+Maybe something low impact like softball.
+The season starts in early April.
+Practice is every Tuesday at the park.
+I need to buy new running shoes soon.
+The old ones are completely worn out.
+My feet hurt after just two miles.
+I signed up for the turkey trot again.
+Last year I finished in under an hour.
+Training starts next week if my schedule clears.
+The trail by the river is great for jogging.
+It's shaded most of the way.
+Watch out for cyclists on the weekends.
+The path gets crowded around eight in the morning.
+I saw a heron by the water today.
+There's a nest near the old bridge.
+The leaves are starting to turn already.
+Fall came early this year, it seems.
+The nights are getting noticeably cooler.
+Time to put the summer clothes away.
+I need to rake the yard this weekend.
+The gutters are full of leaves again.
+Winter is going to be here before we know it.
+We should get the furnace checked soon.
+Last year it broke on the coldest night.
+The repair guy said it was on its last legs.
+Maybe it's time to just replace it.
+I'll get a few quotes next week.
+Home ownership is just a list of chores.
+The garden did really well this year.
+We got more tomatoes than we could eat.
+I gave a bag to the neighbors.
+Next year I want to try growing peppers.
+The basil took over half the bed.
+Mint really does spread like a weed.
+The squirrels got all the strawberries again.
+I might put up netting next spring.
+Gardening is my favorite way to unwind.
+There's something satisfying about growing food.
+The commute was surprisingly easy today.
+No traffic on the bridge for once.
+I even found parking right away.
+That never happens on a Monday.
+The train was packed this morning though.
+Someone was playing music without headphones.
+I read the news on my phone instead.
+The headlines were all about the election.
+I try not to doomscroll before work.
+A podcast is usually a better choice.
+I'm three episodes behind on my favorite show.
+The host interviews a different scientist each week.
+Last week's episode was about black holes.
+I only understood about half of it.
+Still, it was fascinating stuff.
+I love learning about space.
+Did you see the meteor shower last month?
+We drove out of the city to watch it.
+The sky was perfectly clear.
+We counted at least twenty shooting stars.
+It was worth losing a little sleep.
+Next one isn't until November.
+I'll put it on the calendar now.
+So we don't accidentally miss it.
+Anyway, enough stargazing talk.
+What's new with you these days?
+How's the family doing?
+Did your sister ever move to Portland?
+I heard she got a new job out there.
+That's exciting news if it's true.
+We should all get together soon.
+Maybe a barbecue when the weather's nice.
+I'll bring my famous potato salad.
+It's famous because nobody else will eat it.
+Just kidding, it's actually pretty good.
+The secret is a little extra mustard.
+Okay, I've rambled long enough.
+Talk to you later, have a good one.
+
+# === Section C: numbers, dates, and money ===
+My appointment is on March fifteenth at two thirty.
+The total comes to forty seven dollars and sixty two cents.
+Call me back at five five five, zero one eight two.
+The meeting starts at nine a.m. sharp on Tuesday.
+We're expecting about a hundred and twenty guests.
+The recipe calls for two and a half cups of flour.
+I was born on the twenty third of August.
+The zip code here is nine four one one zero.
+She ran the marathon in three hours and forty minutes.
+The temperature dropped to twenty eight degrees last night.
+Our order number is eight seven six five four.
+The store opens at ten and closes at half past eight.
+The invoice is due by the end of January.
+I'll be thirty four years old next month.
+The flight leaves at six fifteen in the morning.
+They won the game fourteen to seven.
+The rent is one thousand eight hundred dollars a month.
+My desk is on the third floor, room three oh seven.
+The package weighs about twelve and a half pounds.
+We drove four hundred miles over the weekend.
+The wedding is set for June twenty first, twenty twenty seven.
+I'll need about thirty five minutes to get there.
+The coupon saves you fifteen percent at checkout.
+Her phone number ends in six nine two zero.
+The show starts at seven forty five tomorrow evening.
+Add a quarter teaspoon of salt and stir.
+The baby weighs seven pounds eleven ounces.
+We got eighteen inches of snow in one night.
+The account number is five five oh two, three eight.
+Meet me at gate B twelve at a quarter to five.
+The hike is six point four miles round trip.
+I paid three ninety nine a gallon this morning.
+The deadline is midnight on the last day of April.
+There are fifty two cards in a standard deck.
+The museum is open from nine to five, closed Mondays.
+My birthday is the eighth of November.
+The soup needs to simmer for forty five minutes.
+Order a large, that's about sixteen inches.
+The bus comes every twenty minutes during rush hour.
+He finished in second place by two tenths of a second.
+The population of the town is about thirty thousand.
+I set my alarm for five forty five a.m.
+The battery lasts up to eighteen hours.
+That couch costs eight hundred and ninety nine dollars.
+The speed limit drops to thirty five near the school.
+Two thirds of the voters approved the measure.
+
+# === Section D: tech and developer vocabulary ===
+I pushed the fix to the main branch this morning.
+The build is failing on the CI server again.
+Can you review my pull request when you get a chance?
+There's a merge conflict in the config file.
+Let's refactor this function to be more readable.
+The tests pass locally but fail in the pipeline.
+I'll deploy to staging first, then production.
+The API returns a four oh four for that endpoint.
+We need to bump the version number before release.
+The database migration ran without any issues.
+Let's pair on this bug after standup.
+The latency spiked to two seconds last night.
+I think there's a race condition in the worker.
+The cache invalidation logic needs another look.
+That regex is doing way too much work.
+We should add a retry with exponential backoff.
+The logs show a null pointer exception at startup.
+Roll back the deploy and investigate first.
+The feature flag is enabled for ten percent of users.
+This query is missing an index on the user table.
+The docker image is over two gigabytes now.
+I squashed the commits and force pushed.
+The websocket connection keeps dropping.
+Let's add some metrics before we optimize.
+The server ran out of memory overnight.
+This dependency has a known vulnerability.
+Update the changelog before tagging the release.
+The hotfix went out at midnight.
+Standup is at nine thirty in the usual room.
+I'll demo the feature at sprint review.
+That ticket has been open for three sprints.
+Let's timebox the spike to one day.
+The acceptance criteria aren't clear on this story.
+Move that card to in progress, please.
+The retro is right after lunch today.
+We're carrying two points over to next sprint.
+The backlog needs grooming before planning.
+This is blocked until the design is finalized.
+The estimate was way off on that task.
+Kubernetes restarted the pod automatically.
+The pod keeps getting evicted under load.
+Scale the replicas up during the launch.
+The ingress controller needs a config change.
+We migrated everything off the old cluster.
+The health check endpoint is timing out.
+Let's add a liveness probe to that service.
+The secret got rotated last night.
+Terraform wants to destroy and recreate the bucket.
+The state file is out of sync again.
+Run plan first and paste the output.
+The new region has much lower latency.
+Cloud costs went up twenty percent this quarter.
+We should right size those instances.
+The lambda function timed out at thirty seconds.
+Cold starts are killing the user experience.
+Let's move this to a queue based architecture.
+The message got stuck in the dead letter queue.
+Consumers are lagging behind the producers.
+We need idempotency keys on that webhook.
+The payload exceeds the size limit.
+Retry the request with a fresh token.
+OAuth tokens expire after an hour.
+The redirect URI isn't whitelisted.
+Scope the permissions as tightly as possible.
+The frontend makes three unnecessary requests.
+Let's debounce that search input.
+The bundle size jumped after the last update.
+Lazy load the images below the fold.
+That component re renders on every keystroke.
+Memoize the expensive calculation.
+The modal doesn't trap focus correctly.
+Screen readers can't parse that layout.
+The color contrast fails accessibility guidelines.
+Let's use a design token for that spacing.
+The typeface doesn't render well on Windows.
+Ship it behind a feature flag first.
+A/B test the new onboarding flow.
+Conversion dropped after the redesign.
+Users are dropping off at step three.
+The analytics dashboard updated overnight.
+Page load time regressed by half a second.
+Let's profile the app before guessing.
+Memory usage climbs steadily over time.
+There's a leak in the event listener cleanup.
+The service worker caches stale responses.
+Invalidate the cache on deploy.
+Open a terminal and run the tests again.
+The linter flagged twelve new warnings.
+Format on save is not enabled in your editor.
+Check the diff before you commit that.
+You have unstaged changes in three files.
+Stash that work and switch branches.
+Rebase onto main to pick up the fix.
+Cherry pick that commit into the release branch.
+Tag the commit and push the tags.
+Never commit secrets to the repository.
+Rotate the API keys that leaked.
+Add that to the gitignore file.
+
+# === Section E: personalize me! Replace these with your own details ===
+My name is Alex and I live in Portland.
+I work with Jordan, Taylor, and Priya every day.
+Send a message to Sam about the retro notes.
+Email my manager, Casey, about the time off.
+My favorite coffee shop is on Alberta Street.
+Let's meet at the office in Beaverton tomorrow.
+I commute down Highway twenty six most days.
+The standup link is in the team calendar.
+My sister Riley lives across the river in Vancouver.
+Text Morgan and ask about the concert tickets.
+Call Dr. Patel's office to reschedule my appointment.
+The kids go to school near Laurelhurst Park.
+Remind me to ask Jamie about the camping trip.
+Forward that to our accountant, Ms. Nguyen.
+My friend Devon just moved to Seattle.
+We're meeting Chris at the food carts downtown.
+The project codename is Warble, spelled w a r b l e.
+I'll post the update in the eng general channel.
+Ask the assistant to summarize my unread messages.
+Draft a reply to Mom's email about Thanksgiving.
+Search my notes for the chicken marinade recipe.
+Add a todo to finish the expense report.
+Set a timer for twenty five minutes.
+Start a new note called ideas for the side project.
+Play my focus playlist on shuffle.
+What's on my calendar for Thursday afternoon?
+Remind me about the dentist appointment tomorrow at nine.
+Read back the last thing I wrote.
+Delete the previous sentence.
+Undo that last change, please.
+New paragraph. Then capitalize the next word.
+Insert a comma after the word however.
+Put that phrase in quotation marks.
+Start a bulleted list here.
+Make that heading bold.
+Move the cursor to the end of the line.
+Select the previous paragraph.
+Copy that and paste it below.
+Scroll down to the next section.
+Open my email and check for anything urgent.
+What did I miss in the team chat today?
+Schedule a one on one with my manager for Friday.
+Block off focus time from nine to eleven.
+Move my two o'clock meeting to next week.
+Decline the invite but leave a polite note.
+Accept the meeting and add it to my calendar.
+What's the first thing on my agenda tomorrow?
+Clear my afternoon, something came up.
+How long is my commute home right now?
+Give me the headlines while I make coffee.
+Add oat milk to the grocery list.
+How many unread messages do I have?
+Reply to the group chat with a thumbs up.
+Let everyone know I'll be offline this afternoon.

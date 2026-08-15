@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Warble Recorder</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, system-ui, sans-serif;
+    background: #111418; color: #e6e9ee;
+    display: flex; justify-content: center; padding: 2rem 1rem;
+  }
+  main { width: 100%; max-width: 640px; }
+  h1 { font-size: 1.25rem; font-weight: 600; margin: 0 0 0.25rem; }
+  #progress-wrap { margin: 1rem 0 2rem; }
+  #progress-label { font-size: 0.85rem; color: #9aa4b2; margin-bottom: 0.35rem; }
+  #progress-bar { height: 6px; background: #232a33; border-radius: 3px; overflow: hidden; }
+  #progress-fill { height: 100%; width: 0%; background: #4f9cf9; transition: width 0.3s; }
+  #prompt {
+    font-size: 1.6rem; line-height: 1.4; padding: 1.5rem;
+    background: #1a2027; border-radius: 12px; min-height: 5.5rem;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+  }
+  #controls { display: flex; gap: 0.75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  button {
+    font: inherit; font-size: 1rem; padding: 0.7rem 1.4rem; border-radius: 8px;
+    border: none; cursor: pointer; background: #2a323d; color: #e6e9ee;
+  }
+  button:disabled { opacity: 0.4; cursor: default; }
+  #btn-record { background: #d84a4a; }
+  #btn-record.recording { background: #f9a14f; color: #111418; }
+  #btn-save { background: #4f9cf9; }
+  audio { width: 100%; margin-top: 1rem; display: none; }
+  #warnings { color: #f9a14f; font-size: 0.9rem; margin-top: 1rem; }
+  #status { color: #9aa4b2; font-size: 0.85rem; margin-top: 1rem; min-height: 1.2em; }
+  #finished { display: none; text-align: center; margin-top: 3rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Warble Recorder</h1>
+  <div id="progress-wrap">
+    <div id="progress-label">0 / 0</div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+  </div>
+
+  <div id="prompt">Loading…</div>
+
+  <div id="controls">
+    <button id="btn-record">Record</button>
+    <button id="btn-discard" disabled>Discard</button>
+    <button id="btn-save" disabled>Save &amp; next</button>
+  </div>
+
+  <audio id="playback" controls></audio>
+  <div id="warnings"></div>
+  <div id="status"></div>
+  <div id="finished">
+    <h2>All prompts recorded</h2>
+    <p>You can close this tab, or add more sentences to <code>recorder/prompts.txt</code> and refresh.</p>
+  </div>
+</main>
+
+<script>
+let stream, recorder, chunks = [], blob = null, currentIndex = null;
+
+const promptEl = document.getElementById('prompt');
+const statusEl = document.getElementById('status');
+const warningsEl = document.getElementById('warnings');
+const playback = document.getElementById('playback');
+const btnRecord = document.getElementById('btn-record');
+const btnDiscard = document.getElementById('btn-discard');
+const btnSave = document.getElementById('btn-save');
+
+function setProgress(done, total) {
+  document.getElementById('progress-label').textContent = `${done} / ${total} clips`;
+  document.getElementById('progress-fill').style.width = total ? `${(done / total) * 100}%` : '0%';
+}
+
+async function loadNext() {
+  const res = await fetch('/api/prompts/next');
+  const data = await res.json();
+  setProgress(data.done_count, data.total);
+  resetTake();
+  if (data.finished) {
+    promptEl.style.display = 'none';
+    document.getElementById('controls').style.display = 'none';
+    document.getElementById('finished').style.display = 'block';
+    return;
+  }
+  currentIndex = data.index;
+  promptEl.textContent = data.text;
+  statusEl.textContent = `Prompt #${data.index + 1}`;
+}
+
+function resetTake() {
+  blob = null;
+  chunks = [];
+  playback.style.display = 'none';
+  playback.src = '';
+  warningsEl.textContent = '';
+  btnDiscard.disabled = true;
+  btnSave.disabled = true;
+  btnRecord.disabled = false;
+  btnRecord.textContent = 'Record';
+  btnRecord.classList.remove('recording');
+}
+
+btnRecord.onclick = async () => {
+  if (recorder && recorder.state === 'recording') {
+    recorder.stop();
+    return;
+  }
+  if (!stream) {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
+  chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    blob = new Blob(chunks, { type: recorder.mimeType });
+    playback.src = URL.createObjectURL(blob);
+    playback.style.display = 'block';
+    btnRecord.textContent = 'Record';
+    btnRecord.classList.remove('recording');
+    btnDiscard.disabled = false;
+    btnSave.disabled = false;
+    statusEl.textContent = 'Listen, then save or discard.';
+  };
+  recorder.start();
+  btnRecord.textContent = 'Stop';
+  btnRecord.classList.add('recording');
+  statusEl.textContent = 'Recording…';
+};
+
+btnDiscard.onclick = () => {
+  resetTake();
+  statusEl.textContent = 'Take discarded — record again when ready.';
+};
+
+btnSave.onclick = async () => {
+  if (!blob || currentIndex === null) return;
+  btnSave.disabled = true;
+  const ext = (blob.type.includes('mp4') ? '.mp4' : blob.type.includes('ogg') ? '.ogg' : blob.type.includes('wav') ? '.wav' : '.webm');
+  const form = new FormData();
+  form.append('index', currentIndex);
+  form.append('file', blob, `take${ext}`);
+  statusEl.textContent = 'Saving…';
+  const res = await fetch('/api/record', { method: 'POST', body: form });
+  const data = await res.json();
+  if (!res.ok) {
+    statusEl.textContent = `Save failed: ${data.detail}`;
+    btnSave.disabled = false;
+    return;
+  }
+  if (data.warnings && data.warnings.length) {
+    // Keep the take, but let the user see the warning before moving on.
+    warningsEl.textContent = 'Warning: ' + data.warnings.join('; ') + '. Saved anyway — discard and re-record if you prefer.';
+    btnDiscard.disabled = false;
+    return;
+  }
+  await loadNext();
+};
+
+loadNext();
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Warble Dictate</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div id="status-dot" class="dot idle"></div>
+      <div id="status-text">Idle</div>
+    </header>
+
+    <button id="toggle-btn">Start dictating (⌘⇧D)</button>
+
+    <section id="history">
+      <p class="hint">Transcribed lines will appear here as they're finalized and pasted.</p>
+    </section>
+
+    <details id="settings">
+      <summary>Settings</summary>
+      <label>
+        Server URL
+        <input id="server-url" type="text" value="ws://127.0.0.1:8001/ws" />
+      </label>
+      <p class="hint">Hotkey is fixed to ⌘⇧D for now — change <code>HOTKEY</code> in main.ts to customize.</p>
+    </details>
+
+    <script type="module" src="renderer.js"></script>
+  </body>
+</html>

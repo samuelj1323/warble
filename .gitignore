@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# Data and models (large artifacts)
+data/raw/
+data/processed/
+data/feedback/
+*.wav
+*.tar.gz
+models/
+checkpoints/
+
+# Frontend
+app/node_modules/
+app/dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
