@@ -188,3 +188,36 @@ button:disabled {
   background: rgba(79, 156, 249, 0.15);
   color: #4f9cf9;
 }
+
+.agent-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #9aa4b2;
+  font-size: 0.85rem;
+}
+
+.agent-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.agent-event {
+  background: rgba(79, 156, 249, 0.08);
+  border: 1px solid rgba(79, 156, 249, 0.25);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.88rem;
+}
+
+.agent-action {
+  color: #4f9cf9;
+  font-weight: 600;
+}
+
+.agent-reply {
+  color: #d7dee7;
+  margin-top: 0.25rem;
+}

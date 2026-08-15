@@ -28,10 +28,14 @@ const STATUS_TEXT: Record<Phase, string> = {
   error: '',
 };
 
+type AgentEvent = { id: string; reply: string; actions: string[] };
+
 export function LiveMode() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [errorText, setErrorText] = useState('');
   const [blocks, setBlocks] = useState<LiveBlock[]>([newBlock()]);
+  const [agentMode, setAgentMode] = useState(false);
+  const [agentEvents, setAgentEvents] = useState<AgentEvent[]>([]);
 
   const streamRef = useRef<MediaStream | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -71,7 +75,7 @@ export function LiveMode() {
     streamRef.current = stream;
 
     const [mime, fmt] = pickMime();
-    const url = liveSocketUrl(fmt);
+    const url = liveSocketUrl(fmt, agentMode);
     const socket = new WebSocket(url);
     socketRef.current = socket;
 
@@ -101,6 +105,8 @@ export function LiveMode() {
       const msg = JSON.parse(event.data);
       if (msg.type === 'final') {
         appendToLiveBlock(msg.id, msg.text);
+      } else if (msg.type === 'agent') {
+        setAgentEvents((prev) => [...prev, { id: msg.id, reply: msg.reply, actions: msg.actions }]);
       }
     };
 
@@ -152,11 +158,35 @@ export function LiveMode() {
         <button className="btn-primary btn-newblock" onClick={startNewBlock} disabled={!canStartNewBlock}>
           New block
         </button>
+        <label className="agent-toggle">
+          <input
+            type="checkbox"
+            checked={agentMode}
+            disabled={phase === 'listening' || phase === 'connecting'}
+            onChange={(e) => setAgentMode(e.target.checked)}
+          />
+          Agent mode (voice commands)
+        </label>
       </div>
       <div className="status">
         {phase === 'listening' && <span className="pulse-dot" />}
         {errorText || STATUS_TEXT[phase]}
       </div>
+
+      {agentEvents.length > 0 && (
+        <div className="agent-events">
+          {agentEvents.map((e, i) => (
+            <div key={i} className="agent-event">
+              {e.actions.map((a, j) => (
+                <div key={j} className="agent-action">
+                  ⚡ {a}
+                </div>
+              ))}
+              {e.reply && <div className="agent-reply">{e.reply}</div>}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="term-list">
         {blocks.length === 1 && blocks[0].entryIds.length === 0 && phase === 'idle' && (

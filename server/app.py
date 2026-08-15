@@ -19,12 +19,16 @@ from pathlib import Path
 
 import numpy as np
 import soundfile as sf
-from fastapi import FastAPI, File, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from agent import run_agent
 from feedback import FeedbackStore
 from streaming import LiveSession
+
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models" / "whisper-warble-ct2"
@@ -81,7 +85,7 @@ def decode_to_pcm(path: Path) -> np.ndarray:
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...)) -> dict:
+async def transcribe(file: UploadFile = File(...), agent: bool = Form(False)) -> dict:
     suffix = Path(file.filename or "audio.webm").suffix or ".webm"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(await file.read())
@@ -99,16 +103,21 @@ async def transcribe(file: UploadFile = File(...)) -> dict:
     finally:
         tmp_path.unlink(missing_ok=True)
 
-    return {
+    result = {
         "id": row["id"],
         "text": text,
         "audio_duration_s": round(len(pcm) / 16000, 2),
         "elapsed_s": round(elapsed, 2),
     }
 
+    if agent and text:
+        result["agent"] = await run_agent(text)
+
+    return result
+
 
 @app.websocket("/ws")
-async def ws(websocket: WebSocket, fmt: str = "webm") -> None:
+async def ws(websocket: WebSocket, fmt: str = "webm", agent: bool = False) -> None:
     await websocket.accept()
 
     async def on_utterance(pcm: np.ndarray) -> None:
@@ -119,7 +128,14 @@ async def ws(websocket: WebSocket, fmt: str = "webm") -> None:
                 {"type": "final", "id": row["id"], "text": text, "elapsed_s": round(elapsed, 2)}
             )
         except Exception:
-            pass  # client already gone; the feedback pair is still saved
+            return  # client already gone; the feedback pair is still saved
+
+        if agent and text:
+            agent_result = await run_agent(text)
+            try:
+                await websocket.send_json({"type": "agent", "id": row["id"], **agent_result})
+            except Exception:
+                pass
 
     session = LiveSession(on_utterance, container=fmt)
     await session.start()

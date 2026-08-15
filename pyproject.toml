@@ -19,6 +19,8 @@ dependencies = [
     "sounddevice>=0.5.5",
     "pynput>=1.8.2",
     "websockets>=17.0.1",
+    "httpx>=0.28",
+    "python-dotenv>=1.0",
 ]
 
 [tool.uv]

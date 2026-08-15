@@ -21,3 +21,6 @@ app/dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Secrets
+.env

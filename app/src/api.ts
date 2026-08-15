@@ -10,7 +10,7 @@ export async function submitFeedback(id: string, correctedText: string | null, r
   }
 }
 
-export function liveSocketUrl(fmt: string): string {
+export function liveSocketUrl(fmt: string, agent: boolean): string {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${proto}//${location.host}/ws?fmt=${fmt}`;
+  return `${proto}//${location.host}/ws?fmt=${fmt}&agent=${agent}`;
 }
