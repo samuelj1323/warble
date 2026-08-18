@@ -1,6 +1,8 @@
+import Foundation
+
 /// A proposed file change from a Claude Code session's tool_use events, rendered
-/// in the diff panel. Never written to disk by this app — Claude Code's own
-/// permission gate (left unapproved) already guarantees that.
+/// in the diff panel. Only written to disk via `applyPendingEdits`, a deliberate
+/// UI-only action — Claude Code's own permission gate is never approved.
 struct PendingEdit: Equatable {
     let filePath: String
     let oldText: String
@@ -29,4 +31,30 @@ func extractPendingEdits(from events: [ClaudeStreamEvent]) -> [PendingEdit] {
             }
         }
     }
+}
+
+enum ApplyPendingEditError: Error, Equatable {
+    case oldTextNotFound(filePath: String)
+}
+
+/// Writes reviewed pending edits to disk. The only place a code-change session
+/// ever writes files — invoked exclusively by a UI Apply action, never by
+/// voice/router dispatch.
+@discardableResult
+func applyPendingEdits(_ edits: [PendingEdit]) throws -> [String] {
+    var writtenPaths: [String] = []
+    for edit in edits {
+        if edit.oldText.isEmpty {
+            try edit.newText.write(toFile: edit.filePath, atomically: true, encoding: .utf8)
+        } else {
+            let existing = try String(contentsOfFile: edit.filePath, encoding: .utf8)
+            guard existing.contains(edit.oldText) else {
+                throw ApplyPendingEditError.oldTextNotFound(filePath: edit.filePath)
+            }
+            let updated = existing.replacingOccurrences(of: edit.oldText, with: edit.newText)
+            try updated.write(toFile: edit.filePath, atomically: true, encoding: .utf8)
+        }
+        writtenPaths.append(edit.filePath)
+    }
+    return writtenPaths
 }

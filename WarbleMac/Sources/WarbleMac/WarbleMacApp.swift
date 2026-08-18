@@ -24,15 +24,17 @@ final class AppModel: ObservableObject {
     private var trayIcon: TrayIconController?
     private var statusObservation: Task<Void, Never>?
 
-    /// Spawns a fresh ClaudeCodeSession scoped to the configured repo root, runs
-    /// the request, and publishes the session so the UI can render its live
-    /// transcript/diff. Returns a short spoken summary.
+    /// Runs the request against the existing ClaudeCodeSession if one is already
+    /// open (so a follow-up spoken correction resumes the same conversation and
+    /// accumulates onto its pending diff), or spawns a fresh one scoped to the
+    /// configured repo root otherwise. Publishes the session so the UI can render
+    /// its live transcript/diff. Returns a short spoken summary.
     func runCodeChange(prompt: String) async -> String {
         guard !codeChangeRepoRoot.isEmpty else {
             return "No code-change repo root is configured yet."
         }
 
-        let session = ClaudeCodeSession(repoRoot: codeChangeRepoRoot)
+        let session = codeChangeSession ?? ClaudeCodeSession(repoRoot: codeChangeRepoRoot)
         codeChangeSession = session
         await session.run(prompt: prompt)
 
@@ -204,13 +206,26 @@ struct ClaudeCodeSessionView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxHeight: 200)
+
+                // Apply/Discard are the sole irreversible step (writing files to
+                // disk) and are deliberately UI-only — never reachable via voice.
+                HStack {
+                    Button("Apply") {
+                        try? session.apply()
+                    }
+                    .buttonStyle(.borderedProminent)
+
+                    Button("Discard") {
+                        session.discard()
+                    }
+                }
             }
         }
     }
 
     private func transcriptLine(for event: ClaudeStreamEvent) -> String {
         switch event {
-        case .system(let subtype):
+        case .system(let subtype, _):
             return "[system] \(subtype)"
         case .assistant(let content):
             return content.map { item in

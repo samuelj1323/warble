@@ -50,7 +50,7 @@ enum ClaudeStreamEvent: Equatable {
         let content: String
     }
 
-    case system(subtype: String)
+    case system(subtype: String, sessionID: String?)
     case assistant(content: [ContentItem])
     case user(toolResults: [ToolResult])
     case result(text: String, isError: Bool)
@@ -63,7 +63,7 @@ enum ClaudeStreamEvent: Equatable {
 
         switch envelope.type {
         case "system":
-            self = .system(subtype: envelope.subtype ?? "")
+            self = .system(subtype: envelope.subtype ?? "", sessionID: envelope.sessionID)
         case "assistant":
             let items = (envelope.message?.content ?? []).compactMap(ContentItem.init(raw:))
             self = .assistant(content: items)
@@ -86,10 +86,12 @@ enum ClaudeStreamEvent: Equatable {
         let message: Message?
         let result: String?
         let isError: Bool?
+        let sessionID: String?
 
         enum CodingKeys: String, CodingKey {
             case type, subtype, message, result
             case isError = "is_error"
+            case sessionID = "session_id"
         }
     }
 

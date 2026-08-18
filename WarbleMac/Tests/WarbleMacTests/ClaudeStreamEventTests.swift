@@ -10,7 +10,7 @@ final class ClaudeStreamEventTests: XCTestCase {
 
         let event = ClaudeStreamEvent(jsonLine: line)
 
-        XCTAssertEqual(event, .system(subtype: "init"))
+        XCTAssertEqual(event, .system(subtype: "init", sessionID: "abc-123"))
     }
 
     func testDecodesAssistantThinkingContentItem() {

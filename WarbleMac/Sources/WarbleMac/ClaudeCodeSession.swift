@@ -31,7 +31,7 @@ private final class LineBuffer: @unchecked Sendable {
 /// to disk — see PendingEdit.
 @MainActor
 final class ClaudeCodeSession: ObservableObject {
-    typealias LineSource = (_ prompt: String, _ repoRoot: String) -> AsyncThrowingStream<String, Error>
+    typealias LineSource = (_ prompt: String, _ repoRoot: String, _ resumeSessionID: String?) -> AsyncThrowingStream<String, Error>
 
     @Published private(set) var events: [ClaudeStreamEvent] = []
     @Published private(set) var pendingEdits: [PendingEdit] = []
@@ -40,23 +40,30 @@ final class ClaudeCodeSession: ObservableObject {
 
     private let repoRoot: String
     private let lineSource: LineSource
+    private var sessionID: String?
 
     init(repoRoot: String, lineSource: LineSource? = nil) {
         self.repoRoot = repoRoot
         self.lineSource = lineSource ?? Self.realLineSource
     }
 
+    /// Runs a turn against this session. Follow-up calls resume the same
+    /// underlying claude conversation (via the session_id captured from the
+    /// first turn's system init event) and accumulate onto the existing
+    /// transcript/pendingEdits rather than resetting them, so a spoken
+    /// correction can build on edits still awaiting Apply/Discard.
     func run(prompt: String) async {
         isRunning = true
-        events = []
-        pendingEdits = []
         finalResultText = nil
 
         do {
-            for try await line in lineSource(prompt, repoRoot) {
+            for try await line in lineSource(prompt, repoRoot, sessionID) {
                 guard let event = ClaudeStreamEvent(jsonLine: line) else { continue }
                 events.append(event)
                 pendingEdits = extractPendingEdits(from: events)
+                if case .system(_, let capturedSessionID) = event, let capturedSessionID {
+                    sessionID = capturedSessionID
+                }
                 if case .result(let text, _) = event {
                     finalResultText = text
                 }
@@ -69,11 +76,28 @@ final class ClaudeCodeSession: ObservableObject {
         isRunning = false
     }
 
-    nonisolated private static func realLineSource(prompt: String, repoRoot: String) -> AsyncThrowingStream<String, Error> {
+    /// Writes the current pendingEdits to disk. UI-only action (button/keypress),
+    /// never reachable via voice/router dispatch.
+    func apply() throws {
+        try applyPendingEdits(pendingEdits)
+        pendingEdits = []
+    }
+
+    /// Drops the current pendingEdits without touching disk. UI-only action,
+    /// never reachable via voice/router dispatch.
+    func discard() {
+        pendingEdits = []
+    }
+
+    nonisolated private static func realLineSource(prompt: String, repoRoot: String, resumeSessionID: String?) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-            process.arguments = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
+            var arguments = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose"]
+            if let resumeSessionID {
+                arguments += ["--resume", resumeSessionID]
+            }
+            process.arguments = arguments
             process.currentDirectoryURL = URL(fileURLWithPath: repoRoot)
 
             let stdoutPipe = Pipe()
