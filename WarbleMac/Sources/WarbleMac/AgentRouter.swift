@@ -17,11 +17,18 @@ final class AgentRouter: @unchecked Sendable {
     private let tools: MacControlTools
     private let tts: TTSService
     private let classify: Classifier
+    private let runCodeChange: ((String) async -> String)?
 
-    init(tools: MacControlTools, tts: TTSService, classify: @escaping Classifier) {
+    init(
+        tools: MacControlTools,
+        tts: TTSService,
+        classify: @escaping Classifier,
+        runCodeChange: ((String) async -> String)? = nil
+    ) {
         self.tools = tools
         self.tts = tts
         self.classify = classify
+        self.runCodeChange = runCodeChange
     }
 
     @discardableResult
@@ -33,7 +40,11 @@ final class AgentRouter: @unchecked Sendable {
         case .macControl(let tool, let arguments):
             reply = dispatch(tool: tool, arguments: arguments)
         case .codeChange:
-            reply = "Code-change requests aren't handled yet."
+            if let runCodeChange {
+                reply = await runCodeChange(transcript)
+            } else {
+                reply = "Code-change requests aren't handled yet."
+            }
         case .chat(let text):
             reply = text
         }

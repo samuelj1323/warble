@@ -15,10 +15,35 @@ final class AppModel: ObservableObject {
     @Published private(set) var pushToTalk: PushToTalkController?
     @Published private(set) var statusMessage: String = "Loading model..."
     @Published var isAgentMode: Bool = false
+    @Published var codeChangeRepoRoot: String = UserDefaults.standard.string(forKey: "codeChangeRepoRoot") ?? "" {
+        didSet { UserDefaults.standard.set(codeChangeRepoRoot, forKey: "codeChangeRepoRoot") }
+    }
+    @Published private(set) var codeChangeSession: ClaudeCodeSession?
 
     private var hotkeyManager: HotkeyManager?
     private var trayIcon: TrayIconController?
     private var statusObservation: Task<Void, Never>?
+
+    /// Spawns a fresh ClaudeCodeSession scoped to the configured repo root, runs
+    /// the request, and publishes the session so the UI can render its live
+    /// transcript/diff. Returns a short spoken summary.
+    func runCodeChange(prompt: String) async -> String {
+        guard !codeChangeRepoRoot.isEmpty else {
+            return "No code-change repo root is configured yet."
+        }
+
+        let session = ClaudeCodeSession(repoRoot: codeChangeRepoRoot)
+        codeChangeSession = session
+        await session.run(prompt: prompt)
+
+        if let finalResultText = session.finalResultText {
+            return finalResultText
+        }
+        let editCount = session.pendingEdits.count
+        return editCount == 0
+            ? "No changes were proposed."
+            : "Proposed \(editCount) edit\(editCount == 1 ? "" : "s") for review."
+    }
 
     func loadModelAndReportInfo() async {
         checkAccessibilityPermission()
@@ -42,6 +67,9 @@ final class AppModel: ObservableObject {
                         return await FoundationModelsAgentClassifier.classify(transcript)
                     }
                     return .chat(reply: "Agent mode requires macOS 26.")
+                },
+                runCodeChange: { [weak self] transcript in
+                    await self?.runCodeChange(prompt: transcript) ?? "Code-change agent unavailable."
                 }
             )
             let controller = PushToTalkController(
@@ -108,10 +136,19 @@ struct ContentView: View {
             Toggle("Agent mode", isOn: $appModel.isAgentMode)
                 .toggleStyle(.switch)
 
+            HStack {
+                Text("Code-change repo root:")
+                TextField("/path/to/scratch-repo", text: $appModel.codeChangeRepoRoot)
+            }
+
             if let controller = appModel.pushToTalk {
                 PushToTalkView(controller: controller)
             } else {
                 ProgressView()
+            }
+
+            if let session = appModel.codeChangeSession {
+                ClaudeCodeSessionView(session: session)
             }
 
             // Temporary manual-verification button for TTSService (issue #5) — remove once
@@ -124,6 +161,89 @@ struct ContentView: View {
         .frame(minWidth: 400, minHeight: 300)
         .task {
             await appModel.loadModelAndReportInfo()
+        }
+    }
+}
+
+/// Renders a ClaudeCodeSession's live transcript and the diff it proposes.
+/// View-only: no Apply/Discard here — that's #8, which also makes the session
+/// multi-turn instead of one-shot.
+struct ClaudeCodeSessionView: View {
+    @ObservedObject var session: ClaudeCodeSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Code-change session")
+                    .font(.headline)
+                if session.isRunning {
+                    ProgressView().controlSize(.small)
+                }
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(session.events.enumerated()), id: \.offset) { _, event in
+                        Text(transcriptLine(for: event))
+                            .font(.caption.monospaced())
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxHeight: 150)
+
+            if !session.pendingEdits.isEmpty {
+                Text("Proposed changes")
+                    .font(.subheadline.bold())
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        ForEach(Array(session.pendingEdits.enumerated()), id: \.offset) { _, edit in
+                            DiffView(edit: edit)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 200)
+            }
+        }
+    }
+
+    private func transcriptLine(for event: ClaudeStreamEvent) -> String {
+        switch event {
+        case .system(let subtype):
+            return "[system] \(subtype)"
+        case .assistant(let content):
+            return content.map { item in
+                switch item {
+                case .thinking: return "[thinking]"
+                case .text(let text): return text
+                case .toolUse(_, let name, _): return "[tool: \(name)]"
+                }
+            }.joined(separator: " ")
+        case .user(let results):
+            return results.map { "[result] \($0.content)" }.joined(separator: " ")
+        case .result(let text, _):
+            return "[done] \(text)"
+        }
+    }
+}
+
+struct DiffView: View {
+    let edit: PendingEdit
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(edit.filePath)
+                .font(.caption.bold())
+            if !edit.oldText.isEmpty {
+                Text(edit.oldText)
+                    .font(.caption.monospaced())
+                    .foregroundStyle(.red)
+                    .strikethrough()
+            }
+            Text(edit.newText)
+                .font(.caption.monospaced())
+                .foregroundStyle(.green)
         }
     }
 }
