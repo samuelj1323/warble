@@ -1,13 +1,14 @@
 # AGENTS.md
 
 ## What this is
-Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisper on the owner's voice. Training runs on free cloud GPUs (Colab/Kaggle); recording, prep, and (later) serving run locally on an Apple M1 with 8 GB RAM.
+Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisper on the owner's voice. Training runs on free cloud GPUs (Colab/Kaggle); recording and prep run locally on an Apple M1 with 8 GB RAM. Serving is a native macOS app, **WarbleMac** (SwiftUI + WhisperKit) — a voice harness for dictation, Mac-control commands, and Claude-Code-backed code changes reviewed in a Cursor-like diff panel. See `WarbleMac/README.md` for that app's own setup/run/test instructions.
 
 ## Environment
 - macOS arm64, Apple M1, 8 GB unified memory — only whisper-tiny/base smoke tests locally; real training is for Colab.
 - Python 3.13 venv at `.venv/` managed by **uv** (use `uv pip install --python .venv/bin/python ...`).
-- `ffmpeg` (Homebrew) is required for audio decode/convert.
-- Run scripts as `.venv/bin/python training/...` from the repo root.
+- `ffmpeg` (Homebrew) is required for audio decode/convert during training/prep.
+- Run training scripts as `.venv/bin/python training/...` from the repo root.
+- WarbleMac requires macOS 26+, Xcode 26+ (Swift 6); Mac-control agent mode requires Apple Intelligence / Foundation Models (macOS 26).
 
 ## Commands
 - Recorder app: `.venv/bin/python recorder/app.py` → http://127.0.0.1:8000
@@ -15,9 +16,9 @@ Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisp
 - Local smoke test: `.venv/bin/python training/train.py --model openai/whisper-tiny --epochs 1 --batch-size 4`
 - Evaluate: `.venv/bin/python training/eval.py`
 - Ad-hoc transcription: `.venv/bin/python training/transcribe.py <audio-file> [--model ...]`
-- Convert for serving: `.venv/bin/ct2-transformers-converter --model models/whisper-warble/final --output_dir models/whisper-warble-ct2 --quantization int8` then copy `tokenizer.json`, `tokenizer_config.json`, `preprocessor_config.json` from `final/` into the ct2 dir
-- Backend: `.venv/bin/python server/app.py` → ws://127.0.0.1:8001
-- Electron client: `cd electron && npm install && npm start` (menu-bar app; needs the backend running)
+- Convert checkpoint to CoreML (WhisperKit, one-time per checkpoint): see `WarbleMac/README.md`
+- Run the app: `cd WarbleMac && swift run`
+- Test the app: `cd WarbleMac && swift test`
 - Merge feedback into training data: `.venv/bin/python training/prepare_dataset.py --include-feedback`
 
 ## Conventions
@@ -29,12 +30,11 @@ Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisp
 - Training deps for Colab live in `requirements.txt`; local deps in `pyproject.toml` — keep them in sync.
 
 ## Architecture notes
-- `server/app.py` serves the CTranslate2 int8 build of the fine-tuned model (`models/whisper-warble-ct2`) via faster-whisper on CPU. It's a pure backend now — no static UI — the Electron app (`electron/`) is the only client. The ct2 converter does NOT copy tokenizer files — they must be copied from `final/` (see command above).
-- The recorder (port 8000) and the main app (port 8001) are separate FastAPI apps.
-- `electron/` is the menu-bar dictation client: tray icon, global hotkey (⌘⇧D), mic capture via `MediaRecorder` in the renderer, paste-into-focused-app via `@nut-tree-fork/nut-js` in the main process.
-- Live mode: the client streams webm/opus chunks over `/ws`; `server/streaming.py` pipes them through ffmpeg to 16kHz PCM and uses Silero VAD (`faster_whisper.vad`) to cut utterances on ~0.7s trailing silence (or a 15s max). Each utterance is transcribed and pushed back as a `{"type": "final", ...}` message.
-- Agent mode: `/ws?agent=true` additionally routes each final transcript through `server/agent.py`, which calls OpenRouter (`OPENROUTER_API_KEY` in `.env`) with tool schemas from `server/tools.py` (currently `open_app`, `open_url` — deliberately no raw shell execution, since arguments come from an untrusted voice transcript). Results come back as a `{"type": "agent", "reply": ..., "actions": [...]}` message; the Electron client skips pasting and shows these in its history list instead.
-- Every transcription (record or live) is persisted by `server/feedback.py` to `data/feedback/` (WAV + row in `metadata.csv`) regardless of user action. `training/prepare_dataset.py --include-feedback` merges rows with a `corrected_text` or `rating == "correct"` into the next dataset build, copying their WAVs into `--data-dir` so file paths stay relative like recorder clips.
+- The recorder (port 8000, `recorder/app.py`) and `training/` are the only Python runtime pieces left; the old FastAPI backend (`server/app.py`), streaming/VAD (`server/streaming.py`), OpenRouter agent (`server/agent.py`, `server/tools.py`), and the Electron client (`electron/`) have been removed — fully replaced by the native `WarbleMac` app. `server/feedback.py` is kept only as the reference for `WarbleMac`'s native `FeedbackStore` schema (WAV + `metadata.csv` row format) — it isn't run anymore.
+- `WarbleMac` (SwiftUI, Swift Package) runs the fine-tuned model on-device via WhisperKit (CoreML), replacing faster-whisper/CTranslate2 entirely. It has its own dictation core loop, global hotkey (⌘⇧D) + tray icon, and native paste-into-focused-app (`CGEvent`/`NSPasteboard`, replacing `@nut-tree-fork/nut-js`).
+- Agent mode (toggle in the sidebar) classifies each finalized utterance on-device via Apple's Foundation Models framework (mac-control / code-change / chat) — no network call, replacing `server/agent.py`'s OpenRouter round-trip. Mac-control intents dispatch to native tool implementations matching the old `server/tools.py`'s behavior (open app/URL, volume, mute, lock screen, sleep display, screenshot, media control), then speak a confirmation via `TTSService` (`AVSpeechSynthesizer`).
+- Code-change intents spawn a `claude --output-format stream-json` subprocess scoped to a configured repo root; the streamed transcript and proposed diff render live, and edits only reach disk via an explicit, UI-only **Apply** (never voice-triggered) — **Discard** drops them.
+- Every transcription is still persisted by `WarbleMac`'s native `FeedbackStore` to `data/feedback/` (WAV + row in `metadata.csv`), byte-for-byte compatible with the old schema. `training/prepare_dataset.py --include-feedback` merges rows with a `corrected_text` or `rating == "correct"` into the next dataset build, copying their WAVs into `--data-dir` so file paths stay relative like recorder clips.
 
 ## Agent skills
 
@@ -51,5 +51,5 @@ Default five canonical roles, unchanged. See `docs/agents/triage-labels.md`.
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ## Roadmap
-- Phase 5 is built: Electron menu-bar client with live dictation, paste-on-finalize, and a feedback loop (correct/fix transcriptions → merged into future fine-tunes via `--include-feedback`). Agent mode (voice → tool calls via OpenRouter) is built on top of it.
-- Possible next steps: surface feedback-driven WER improvements after a re-train; hands-free wake-word activation for live mode; more agent tools; packaging/signing the Electron app.
+- The native Swift rewrite (`WarbleMac`) is built: dictation core loop + hotkey/paste/tray parity, TTS, on-device Mac-control agent mode, Claude-Code-backed code-change agent (multi-turn, view-only diff → Apply/Discard), and a Cursor-like sidebar/center layout tying it together.
+- Possible next steps: surface feedback-driven WER improvements after a re-train; hands-free wake-word activation; more agent tools; packaging/signing/notarizing `WarbleMac` for distribution outside local `swift run`.

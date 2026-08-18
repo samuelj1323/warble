@@ -7,6 +7,12 @@ Native macOS Swift app — the target of the [Swift rewrite](../AGENTS.md). Buil
 - macOS 26+, Xcode 26+ (Swift 6).
 - The fine-tuned checkpoint already produced by the training pipeline at `models/whisper-warble/final` (see the root `README.md`).
 
+## Permissions
+
+- **Microphone** — required for both push-to-talk and hotkey-triggered dictation; macOS prompts on first recording attempt.
+- **Accessibility** (System Settings → Privacy & Security → Accessibility) — required to paste dictated text into whatever app currently has focus (simulated Cmd+V). Checked/prompted on launch; without it, in-window dictation still works, but text won't paste into other apps.
+- **Automation** — some Mac-control tools (agent mode) shell out to `osascript`/`open`/`pmset`/`screencapture`; macOS may prompt per-target-app the first time a given control (e.g. media playback) is exercised. Grant these individually as they come up in System Settings → Privacy & Security → Automation.
+
 ## Run
 
 ```
@@ -28,7 +34,7 @@ Each finalized utterance is also logged to `data/feedback/` (relative to the wor
 
 A "Test TTS" button plays a spoken confirmation via `TTSService` (`AVSpeechSynthesizer`, fully offline) — a temporary manual-verification hook for the standalone TTS service, ahead of it being wired into the Mac-control and code-change agent flows in later tickets.
 
-Flip the **Agent mode** toggle to route finalized utterances to the on-device agent router instead of pasting them. The router classifies the transcript using Apple's on-device Foundation Models framework (mac-control / code-change / chat) — no network call, replacing the old Python server's OpenRouter-backed `agent.py`. Mac-control intents (open an app, open a URL, set volume/mute, lock the screen, sleep the display, take a screenshot, control media playback) dispatch to native tool implementations matching `server/tools.py`'s behavior, then speak a confirmation via `TTSService`. Chat intents get a short spoken reply. Agent mode requires macOS 26 (Apple Intelligence / Foundation Models).
+Flip the **Agent mode** toggle to route finalized utterances to the on-device agent router instead of pasting them. The router classifies the transcript using Apple's on-device Foundation Models framework (mac-control / code-change / chat) — no network call, replacing the old Python server's OpenRouter-backed agent. Mac-control intents (open an app, open a URL, set volume/mute, lock the screen, sleep the display, take a screenshot, control media playback) dispatch to native tool implementations matching the old Python server's tool behavior, then speak a confirmation via `TTSService`. Chat intents get a short spoken reply. Agent mode requires macOS 26 (Apple Intelligence / Foundation Models).
 
 A code-change intent spawns a `claude --output-format stream-json` subprocess scoped to the **Code-change repo root** configured in the text field in the window (persisted via `UserDefaults`) — point it at a scratch repo, not `warble` itself, while testing. `ClaudeCodeSession` streams the transcript live (thinking / tool use / results) into the window, and any `Edit`/`Write` tool calls it proposes are rendered as a diff below the transcript. Claude Code's own permission prompt for file edits is never approved by the app, so Claude Code itself never writes to disk — the diff panel is built entirely from the *intended* old/new content in the streamed `tool_use` events.
 
