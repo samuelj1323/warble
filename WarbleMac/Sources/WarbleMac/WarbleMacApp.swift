@@ -19,6 +19,7 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(codeChangeRepoRoot, forKey: "codeChangeRepoRoot") }
     }
     @Published private(set) var codeChangeSession: ClaudeCodeSession?
+    let sessionHistory = SessionHistory()
 
     private var hotkeyManager: HotkeyManager?
     private var trayIcon: TrayIconController?
@@ -37,6 +38,7 @@ final class AppModel: ObservableObject {
         let session = codeChangeSession ?? ClaudeCodeSession(repoRoot: codeChangeRepoRoot)
         codeChangeSession = session
         await session.run(prompt: prompt)
+        sessionHistory.record(.codeChange)
 
         if let finalResultText = session.finalResultText {
             return finalResultText
@@ -72,6 +74,12 @@ final class AppModel: ObservableObject {
                 },
                 runCodeChange: { [weak self] transcript in
                     await self?.runCodeChange(prompt: transcript) ?? "Code-change agent unavailable."
+                },
+                onDispatch: { [weak self] intent, reply in
+                    guard case .codeChange = intent else {
+                        self?.sessionHistory.record(.macControl(reply: reply))
+                        return
+                    }
                 }
             )
             let controller = PushToTalkController(
@@ -79,7 +87,10 @@ final class AppModel: ObservableObject {
                 feedbackStore: feedbackStore,
                 pasteService: PasteService(),
                 agentRouter: agentRouter,
-                isAgentModeEnabled: { [weak self] in self?.isAgentMode ?? false }
+                isAgentModeEnabled: { [weak self] in self?.isAgentMode ?? false },
+                onDictationFinalized: { [weak self] transcript in
+                    self?.sessionHistory.record(.dictation(transcript: transcript))
+                }
             )
             pushToTalk = controller
             statusMessage = "Model loaded: \(info.name)"
@@ -122,26 +133,86 @@ final class AppModel: ObservableObject {
     }
 }
 
+/// Cursor-like full-window layout: sidebar (mode toggle + session history) on
+/// the left, live transcript/agent/code-change stream in the center. The tray
+/// icon (TrayIconController) is separate from this window and keeps working
+/// for hotkey-triggered dictation regardless of what's shown here.
 struct ContentView: View {
     @StateObject private var appModel = AppModel()
     private let ttsService = TTSService()
 
     var body: some View {
-        VStack(spacing: 16) {
+        NavigationSplitView {
+            SidebarView(appModel: appModel)
+        } detail: {
+            CenterPanelView(appModel: appModel, ttsService: ttsService)
+        }
+        .task {
+            await appModel.loadModelAndReportInfo()
+        }
+    }
+}
+
+struct SidebarView: View {
+    @ObservedObject var appModel: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
             Text("Warble")
                 .font(.title)
-
-            Text(appModel.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
             Toggle("Agent mode", isOn: $appModel.isAgentMode)
                 .toggleStyle(.switch)
 
-            HStack {
+            VStack(alignment: .leading) {
                 Text("Code-change repo root:")
                 TextField("/path/to/scratch-repo", text: $appModel.codeChangeRepoRoot)
             }
+
+            Divider()
+
+            Text("Sessions")
+                .font(.headline)
+            SessionHistoryListView(history: appModel.sessionHistory)
+        }
+        .padding()
+        .frame(minWidth: 220)
+    }
+}
+
+struct SessionHistoryListView: View {
+    @ObservedObject var history: SessionHistory
+
+    var body: some View {
+        List(history.entries) { entry in
+            Text(label(for: entry.kind))
+                .font(.caption)
+                .lineLimit(1)
+        }
+        .listStyle(.sidebar)
+    }
+
+    private func label(for kind: SessionEntryKind) -> String {
+        switch kind {
+        case .dictation(let transcript):
+            return "🎙️ \(transcript)"
+        case .macControl(let reply):
+            return "⚙️ \(reply)"
+        case .codeChange:
+            return "🛠️ Code change"
+        }
+    }
+}
+
+struct CenterPanelView: View {
+    @ObservedObject var appModel: AppModel
+    let ttsService: TTSService
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text(appModel.statusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             if let controller = appModel.pushToTalk {
                 PushToTalkView(controller: controller)
@@ -161,15 +232,11 @@ struct ContentView: View {
         }
         .padding()
         .frame(minWidth: 400, minHeight: 300)
-        .task {
-            await appModel.loadModelAndReportInfo()
-        }
     }
 }
 
-/// Renders a ClaudeCodeSession's live transcript and the diff it proposes.
-/// View-only: no Apply/Discard here — that's #8, which also makes the session
-/// multi-turn instead of one-shot.
+/// Renders a ClaudeCodeSession's live transcript, the diff it proposes, and
+/// Apply/Discard buttons for reviewing it.
 struct ClaudeCodeSessionView: View {
     @ObservedObject var session: ClaudeCodeSession
 

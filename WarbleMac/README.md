@@ -14,7 +14,9 @@ cd WarbleMac
 swift run
 ```
 
-This opens a window and, on launch, tries to load a converted CoreML model bundle from `models/whisper-warble-coreml` (relative to the current working directory — run from the repo root, or override with `WARBLE_MODEL_PATH=/path/to/bundle swift run`). It prints the loaded model's name and size, or an error if the bundle isn't there yet.
+This opens a Cursor-like window — a sidebar (mode toggle, code-change repo root field, session history) alongside a center panel (live transcript/agent/code-change stream, diff review) — and, on launch, tries to load a converted CoreML model bundle from `models/whisper-warble-coreml` (relative to the current working directory — run from the repo root, or override with `WARBLE_MODEL_PATH=/path/to/bundle swift run`). It prints the loaded model's name and size, or an error if the bundle isn't there yet.
+
+The sidebar's session history lists every dictation utterance, mac-control action, and code-change session as it happens (`SessionHistory`), so you can see what's been said/done without hunting through the center panel's live stream. The tray icon (menu-bar) stays independent of this window and keeps working for hotkey-triggered dictation even when the window isn't focused.
 
 Once the model loads, hold the "Hold to talk" button and speak; releasing it (or ~0.7s of trailing silence) finalizes the utterance and transcribes it via WhisperKit, showing the text in the window.
 

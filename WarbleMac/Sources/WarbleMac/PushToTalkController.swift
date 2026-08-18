@@ -27,6 +27,7 @@ final class PushToTalkController: ObservableObject {
     private let pasteService: PasteService?
     private let agentRouter: AgentRouter?
     private let isAgentModeEnabled: () -> Bool
+    private let onDictationFinalized: ((String) -> Void)?
 
     private var pollTask: Task<Void, Never>?
     private var startDate: Date?
@@ -39,7 +40,8 @@ final class PushToTalkController: ObservableObject {
         feedbackStore: FeedbackStore? = nil,
         pasteService: PasteService? = nil,
         agentRouter: AgentRouter? = nil,
-        isAgentModeEnabled: @escaping () -> Bool = { false }
+        isAgentModeEnabled: @escaping () -> Bool = { false },
+        onDictationFinalized: ((String) -> Void)? = nil
     ) {
         self.whisperKit = whisperKit
         self.audioProcessor = audioProcessor
@@ -49,6 +51,7 @@ final class PushToTalkController: ObservableObject {
         self.pasteService = pasteService
         self.agentRouter = agentRouter
         self.isAgentModeEnabled = isAgentModeEnabled
+        self.onDictationFinalized = onDictationFinalized
     }
 
     func start() throws {
@@ -119,6 +122,7 @@ final class PushToTalkController: ObservableObject {
                 transcript = reply
             } else {
                 pasteService?.paste(text: transcript)
+                onDictationFinalized?(transcript)
             }
         } catch {
             errorMessage = "Transcription failed: \(error)"
