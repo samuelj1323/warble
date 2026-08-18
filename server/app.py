@@ -1,12 +1,11 @@
-"""Warble server: serve your fine-tuned Whisper to the browser.
+"""Warble server: backend for the Electron dictation client (electron/).
 
 Run:  .venv/bin/python server/app.py
-Then open http://127.0.0.1:8001 (serves app/dist — build the React UI first
-with `cd app && npm install && npm run build`, or use the vite dev server).
 
 Endpoints:
   POST /transcribe   record-then-send (multipart audio upload)
   WS   /ws?fmt=webm  live mode: stream MediaRecorder chunks, get utterance finals
+                      (?agent=true routes finals through the tool-calling agent)
   POST /feedback     save a correction / rating for a transcription
 """
 
@@ -21,7 +20,6 @@ import numpy as np
 import soundfile as sf
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from agent import run_agent
@@ -32,7 +30,6 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models" / "whisper-warble-ct2"
-DIST_DIR = BASE_DIR / "app" / "dist"
 FEEDBACK_DIR = BASE_DIR / "data" / "feedback"
 
 model = None      # faster-whisper model, loaded at startup
@@ -121,6 +118,11 @@ async def ws(websocket: WebSocket, fmt: str = "webm", agent: bool = False) -> No
     await websocket.accept()
 
     async def on_utterance(pcm: np.ndarray) -> None:
+        try:
+            await websocket.send_json({"type": "transcribing"})
+        except Exception:
+            pass  # client already gone; transcription still proceeds so feedback is saved
+
         text, elapsed = await asyncio.to_thread(transcribe_pcm, pcm)
         row = feedback.add(pcm, source="live", predicted_text=text)
         try:
@@ -131,9 +133,19 @@ async def ws(websocket: WebSocket, fmt: str = "webm", agent: bool = False) -> No
             return  # client already gone; the feedback pair is still saved
 
         if agent and text:
-            agent_result = await run_agent(text)
+            async def on_event(event: dict) -> None:
+                try:
+                    await websocket.send_json({"id": row["id"], **event})
+                except Exception:
+                    pass  # client already gone; final payload send below will also no-op
+
             try:
-                await websocket.send_json({"type": "agent", "id": row["id"], **agent_result})
+                agent_result = await run_agent(text, on_event=on_event)
+                payload = {"type": "agent", "id": row["id"], **agent_result}
+            except Exception as e:
+                payload = {"type": "agent", "id": row["id"], "reply": f"agent error: {e}", "actions": []}
+            try:
+                await websocket.send_json(payload)
             except Exception:
                 pass
 
@@ -172,16 +184,9 @@ def submit_feedback(payload: FeedbackIn) -> dict:
     return {"ok": True}
 
 
-if DIST_DIR.exists():
-    app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="app")
-else:
-
-    @app.get("/")
-    def root() -> dict:
-        return {
-            "detail": "UI not built yet. Run: cd app && npm install && npm run build, "
-            "then restart this server — or use the vite dev server on :5173."
-        }
+@app.get("/")
+def root() -> dict:
+    return {"detail": "Warble backend — connect from the Electron client (electron/)."}
 
 
 if __name__ == "__main__":

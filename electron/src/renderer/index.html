@@ -11,7 +11,17 @@
       <div id="status-text">Idle</div>
     </header>
 
+    <div id="activity-banner" class="hidden">
+      <span class="spinner"></span>
+      <span id="activity-text"></span>
+    </div>
+
     <button id="toggle-btn">Start dictating (⌘⇧D)</button>
+
+    <label id="agent-toggle">
+      <input id="agent-checkbox" type="checkbox" />
+      Agent mode (voice commands, no paste)
+    </label>
 
     <section id="history">
       <p class="hint">Transcribed lines will appear here as they're finalized and pasted.</p>

@@ -33,6 +33,7 @@ First run will need, granted to this Electron app specifically (not Terminal):
 
 - Hotkey is hardcoded (`HOTKEY` in `main.ts`) — no settings UI for it yet.
 - No packaging/signing set up (`electron-builder` etc.) — this is a dev scaffold, run via `npm start`.
-- Command-mode (voice commands vs. plain dictation) isn't implemented — `renderer.ts`'s
-  `socket.onmessage` handler is the place to add intent-matching before deciding
-  paste vs. some other action.
+- Agent mode — toggle the "Agent mode" checkbox before starting to dictate. Finalized
+  utterances are routed through the backend's `/ws?agent=true` path (OpenRouter + tool
+  calling, see `server/agent.py`) instead of being pasted; tool-call results and replies
+  show up in the history list. Requires `OPENROUTER_API_KEY` set in `warble/.env`.

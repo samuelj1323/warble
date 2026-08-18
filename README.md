@@ -84,35 +84,26 @@ cp models/whisper-warble/final/{tokenizer.json,tokenizer_config.json,preprocesso
     models/whisper-warble-ct2/
 ```
 
-Build the React frontend (one time, or after UI changes):
-
-```bash
-cd app && npm install && npm run build && cd ..
-```
-
-Then:
+Start the backend:
 
 ```bash
 .venv/bin/python server/app.py
-# open http://127.0.0.1:8001
+# listens on ws://127.0.0.1:8001
 ```
 
-Two modes:
-- **Record** — hit Record, speak, Stop, then Transcribe (record-then-send).
-- **Live** — hit Start listening; the server VAD-segments your speech and streams back a transcript per utterance as you talk.
+Then run the Electron menu-bar client (see `electron/README.md`):
 
-Every transcription — either mode — is saved as feedback (WAV + prediction). Mark it **Correct** or edit the text and **Save fix** to build a corrections dataset for your next fine-tune. Feedback lives in `data/feedback/`; merge it into the next training run with:
+```bash
+cd electron && npm install && npm start
+```
+
+Hit the global hotkey (⌘⇧D) or the tray icon to start/stop dictating. Every transcription is saved as feedback (WAV + prediction); mark it **Correct** or edit the text and **Save fix** to build a corrections dataset for your next fine-tune. Feedback lives in `data/feedback/`; merge it into the next training run with:
 
 ```bash
 .venv/bin/python training/prepare_dataset.py --include-feedback
 ```
 
-For frontend development with hot reload, run the Vite dev server (proxies `/transcribe`, `/feedback`, `/ws` to the FastAPI backend on :8001) alongside the backend:
-
-```bash
-.venv/bin/python server/app.py           # terminal 1 — backend on :8001
-cd app && npm run dev                    # terminal 2 — UI on :5173 with HMR
-```
+**Agent mode** — toggle "Agent mode" in the Electron window before starting: instead of pasting the transcript into whatever app has focus, spoken commands ("open Safari") are routed through OpenRouter with tool-calling to actually do things. Requires `OPENROUTER_API_KEY` in `warble/.env`. See `server/agent.py` / `server/tools.py`.
 
 ## Layout
 
@@ -129,8 +120,9 @@ server/
   app.py             FastAPI: /transcribe, /ws (live), /feedback (port 8001)
   streaming.py        VAD-based utterance segmentation for live mode
   feedback.py         saves transcriptions + corrections as training pairs
-app/                  React + Vite frontend (Record / Live modes, feedback UI); builds to app/dist
-web/index.html       legacy vanilla-JS UI (superseded by app/)
+  agent.py            routes transcripts through OpenRouter with tool-calling
+  tools.py             Mac-control tools the agent can call (open_app, open_url)
+electron/             menu-bar dictation client (tray icon, global hotkey, agent mode)
 data/raw/            your WAVs + metadata.csv (gitignored)
 data/feedback/       transcriptions + corrections from using the app (gitignored)
 data/processed/      HF dataset splits (gitignored)
