@@ -25,7 +25,9 @@ final class AppModel: ObservableObject {
             print("Loaded Whisper model: \(info.name) (\(info.sizeBytes) bytes)")
             fflush(stdout)
             let whisperKit = try await WhisperKit(modelFolder: bundleURL.path, load: true, download: false)
-            pushToTalk = PushToTalkController(whisperKit: whisperKit)
+            let feedbackDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/data/feedback")
+            let feedbackStore = try? FeedbackStore(directory: feedbackDir)
+            pushToTalk = PushToTalkController(whisperKit: whisperKit, feedbackStore: feedbackStore)
             statusMessage = "Model loaded: \(info.name)"
         } catch {
             print("Failed to load Whisper model at \(bundleURL.path): \(error)")

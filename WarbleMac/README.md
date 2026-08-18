@@ -18,6 +18,8 @@ This opens a window and, on launch, tries to load a converted CoreML model bundl
 
 Once the model loads, hold the "Hold to talk" button and speak; releasing it (or ~0.7s of trailing silence) finalizes the utterance and transcribes it via WhisperKit, showing the text in the window. This is push-to-talk only — no paste-into-other-apps or global hotkey yet (that's a later ticket).
 
+Each finalized utterance is also logged to `data/feedback/` (relative to the working directory) as a 16 kHz WAV plus a row in `data/feedback/metadata.csv`, using the exact same schema as the old Python server's `FeedbackStore` — so `training/prepare_dataset.py --include-feedback` keeps working unchanged.
+
 ## Test
 
 ```

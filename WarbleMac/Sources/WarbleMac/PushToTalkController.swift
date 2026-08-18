@@ -16,6 +16,7 @@ final class PushToTalkController: ObservableObject {
     private let segmenter: UtteranceSegmenter
     private let silenceThreshold: Float
     private let pollInterval: TimeInterval = 0.1
+    private let feedbackStore: FeedbackStore?
 
     private var pollTask: Task<Void, Never>?
     private var startDate: Date?
@@ -24,12 +25,14 @@ final class PushToTalkController: ObservableObject {
         whisperKit: WhisperKit,
         audioProcessor: any AudioProcessing = AudioProcessor(),
         segmenter: UtteranceSegmenter = UtteranceSegmenter(),
-        silenceThreshold: Float = 0.3
+        silenceThreshold: Float = 0.3,
+        feedbackStore: FeedbackStore? = nil
     ) {
         self.whisperKit = whisperKit
         self.audioProcessor = audioProcessor
         self.segmenter = segmenter
         self.silenceThreshold = silenceThreshold
+        self.feedbackStore = feedbackStore
     }
 
     func start() throws {
@@ -82,6 +85,7 @@ final class PushToTalkController: ObservableObject {
         do {
             let results = try await whisperKit.transcribe(audioArray: samples)
             transcript = results.map(\.text).joined(separator: " ")
+            _ = try? feedbackStore?.add(samples: samples, source: "live", predictedText: transcript)
         } catch {
             errorMessage = "Transcription failed: \(error)"
         }
