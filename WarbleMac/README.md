@@ -24,6 +24,10 @@ Pasting into other apps requires **Accessibility permission** for this app (Syst
 
 Each finalized utterance is also logged to `data/feedback/` (relative to the working directory) as a 16 kHz WAV plus a row in `data/feedback/metadata.csv`, using the exact same schema as the old Python server's `FeedbackStore` — so `training/prepare_dataset.py --include-feedback` keeps working unchanged.
 
+A "Test TTS" button plays a spoken confirmation via `TTSService` (`AVSpeechSynthesizer`, fully offline) — a temporary manual-verification hook for the standalone TTS service, ahead of it being wired into the Mac-control and code-change agent flows in later tickets.
+
+Flip the **Agent mode** toggle to route finalized utterances to the on-device agent router instead of pasting them. The router classifies the transcript using Apple's on-device Foundation Models framework (mac-control / code-change / chat) — no network call, replacing the old Python server's OpenRouter-backed `agent.py`. Mac-control intents (open an app, open a URL, set volume/mute, lock the screen, sleep the display, take a screenshot, control media playback) dispatch to native tool implementations matching `server/tools.py`'s behavior, then speak a confirmation via `TTSService`. Code-change intents currently return a stub reply (real handling lands in later tickets); chat intents get a short spoken reply. Agent mode requires macOS 26 (Apple Intelligence / Foundation Models).
+
 ## Test
 
 ```

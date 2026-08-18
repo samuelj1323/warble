@@ -25,6 +25,8 @@ final class PushToTalkController: ObservableObject {
     private let pollInterval: TimeInterval = 0.1
     private let feedbackStore: FeedbackStore?
     private let pasteService: PasteService?
+    private let agentRouter: AgentRouter?
+    private let isAgentModeEnabled: () -> Bool
 
     private var pollTask: Task<Void, Never>?
     private var startDate: Date?
@@ -35,7 +37,9 @@ final class PushToTalkController: ObservableObject {
         segmenter: UtteranceSegmenter = UtteranceSegmenter(),
         silenceThreshold: Float = 0.3,
         feedbackStore: FeedbackStore? = nil,
-        pasteService: PasteService? = nil
+        pasteService: PasteService? = nil,
+        agentRouter: AgentRouter? = nil,
+        isAgentModeEnabled: @escaping () -> Bool = { false }
     ) {
         self.whisperKit = whisperKit
         self.audioProcessor = audioProcessor
@@ -43,6 +47,8 @@ final class PushToTalkController: ObservableObject {
         self.silenceThreshold = silenceThreshold
         self.feedbackStore = feedbackStore
         self.pasteService = pasteService
+        self.agentRouter = agentRouter
+        self.isAgentModeEnabled = isAgentModeEnabled
     }
 
     func start() throws {
@@ -108,7 +114,12 @@ final class PushToTalkController: ObservableObject {
             let results = try await whisperKit.transcribe(audioArray: samples)
             transcript = results.map(\.text).joined(separator: " ")
             _ = try? feedbackStore?.add(samples: samples, source: "live", predictedText: transcript)
-            pasteService?.paste(text: transcript)
+            if isAgentModeEnabled(), let agentRouter {
+                let reply = await agentRouter.handle(transcript: transcript)
+                transcript = reply
+            } else {
+                pasteService?.paste(text: transcript)
+            }
         } catch {
             errorMessage = "Transcription failed: \(error)"
         }

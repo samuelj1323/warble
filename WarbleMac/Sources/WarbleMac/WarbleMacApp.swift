@@ -14,6 +14,7 @@ struct WarbleMacApp: App {
 final class AppModel: ObservableObject {
     @Published private(set) var pushToTalk: PushToTalkController?
     @Published private(set) var statusMessage: String = "Loading model..."
+    @Published var isAgentMode: Bool = false
 
     private var hotkeyManager: HotkeyManager?
     private var trayIcon: TrayIconController?
@@ -33,10 +34,22 @@ final class AppModel: ObservableObject {
             let whisperKit = try await WhisperKit(modelFolder: bundleURL.path, load: true, download: false)
             let feedbackDir = URL(fileURLWithPath: FileManager.default.currentDirectoryPath + "/data/feedback")
             let feedbackStore = try? FeedbackStore(directory: feedbackDir)
+            let agentRouter = AgentRouter(
+                tools: MacControlTools(),
+                tts: TTSService(),
+                classify: { transcript in
+                    if #available(macOS 26.0, *) {
+                        return await FoundationModelsAgentClassifier.classify(transcript)
+                    }
+                    return .chat(reply: "Agent mode requires macOS 26.")
+                }
+            )
             let controller = PushToTalkController(
                 whisperKit: whisperKit,
                 feedbackStore: feedbackStore,
-                pasteService: PasteService()
+                pasteService: PasteService(),
+                agentRouter: agentRouter,
+                isAgentModeEnabled: { [weak self] in self?.isAgentMode ?? false }
             )
             pushToTalk = controller
             statusMessage = "Model loaded: \(info.name)"
@@ -81,6 +94,7 @@ final class AppModel: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var appModel = AppModel()
+    private let ttsService = TTSService()
 
     var body: some View {
         VStack(spacing: 16) {
@@ -91,10 +105,19 @@ struct ContentView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
+            Toggle("Agent mode", isOn: $appModel.isAgentMode)
+                .toggleStyle(.switch)
+
             if let controller = appModel.pushToTalk {
                 PushToTalkView(controller: controller)
             } else {
                 ProgressView()
+            }
+
+            // Temporary manual-verification button for TTSService (issue #5) — remove once
+            // TTS is wired into the mac-control/code-change agent flows in later tickets.
+            Button("Test TTS") {
+                ttsService.speak("Warble text to speech is working.")
             }
         }
         .padding()
