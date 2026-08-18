@@ -13,9 +13,9 @@ data/feedback/
 models/
 checkpoints/
 
-# Frontend
-app/node_modules/
-app/dist/
+# Swift
+.build/
+.swiftpm/
 
 # OS / editor
 .DS_Store

@@ -16,9 +16,8 @@ Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisp
 - Evaluate: `.venv/bin/python training/eval.py`
 - Ad-hoc transcription: `.venv/bin/python training/transcribe.py <audio-file> [--model ...]`
 - Convert for serving: `.venv/bin/ct2-transformers-converter --model models/whisper-warble/final --output_dir models/whisper-warble-ct2 --quantization int8` then copy `tokenizer.json`, `tokenizer_config.json`, `preprocessor_config.json` from `final/` into the ct2 dir
-- Build frontend: `cd app && npm install && npm run build` (outputs to `app/dist`, served by the backend)
-- Frontend dev (HMR): `cd app && npm run dev` → http://127.0.0.1:5173 (proxies `/transcribe`, `/feedback`, `/ws` to :8001 — run the backend alongside)
-- Main app: `.venv/bin/python server/app.py` → http://127.0.0.1:8001
+- Backend: `.venv/bin/python server/app.py` → ws://127.0.0.1:8001
+- Electron client: `cd electron && npm install && npm start` (menu-bar app; needs the backend running)
 - Merge feedback into training data: `.venv/bin/python training/prepare_dataset.py --include-feedback`
 
 ## Conventions
@@ -30,12 +29,27 @@ Warble builds a personalized speech-to-text model: fine-tuned open-weights Whisp
 - Training deps for Colab live in `requirements.txt`; local deps in `pyproject.toml` — keep them in sync.
 
 ## Architecture notes
-- `server/app.py` serves the CTranslate2 int8 build of the fine-tuned model (`models/whisper-warble-ct2`) via faster-whisper on CPU, and mounts the built React app (`app/dist`) at `/`. The ct2 converter does NOT copy tokenizer files — they must be copied from `final/` (see command above).
+- `server/app.py` serves the CTranslate2 int8 build of the fine-tuned model (`models/whisper-warble-ct2`) via faster-whisper on CPU. It's a pure backend now — no static UI — the Electron app (`electron/`) is the only client. The ct2 converter does NOT copy tokenizer files — they must be copied from `final/` (see command above).
 - The recorder (port 8000) and the main app (port 8001) are separate FastAPI apps.
-- `app/` is the React + Vite frontend (Record mode + Live mode + inline feedback UI). `web/index.html` is the old vanilla-JS UI, kept only as reference — superseded by `app/`.
-- Live mode: browser `MediaRecorder` streams webm/opus chunks over `/ws`; `server/streaming.py` pipes them through ffmpeg to 16kHz PCM and uses Silero VAD (`faster_whisper.vad`) to cut utterances on ~0.7s trailing silence (or a 15s max). Each utterance is transcribed and pushed back as a `{"type": "final", ...}` message.
-- Every transcription (record or live) is persisted by `server/feedback.py` to `data/feedback/` (WAV + row in `metadata.csv`) regardless of user action; the UI's Correct/Save-fix buttons `POST /feedback` to attach a `rating` or `corrected_text`. `training/prepare_dataset.py --include-feedback` merges rows with a `corrected_text` or `rating == "correct"` into the next dataset build, copying their WAVs into `--data-dir` so file paths stay relative like recorder clips.
+- `electron/` is the menu-bar dictation client: tray icon, global hotkey (⌘⇧D), mic capture via `MediaRecorder` in the renderer, paste-into-focused-app via `@nut-tree-fork/nut-js` in the main process.
+- Live mode: the client streams webm/opus chunks over `/ws`; `server/streaming.py` pipes them through ffmpeg to 16kHz PCM and uses Silero VAD (`faster_whisper.vad`) to cut utterances on ~0.7s trailing silence (or a 15s max). Each utterance is transcribed and pushed back as a `{"type": "final", ...}` message.
+- Agent mode: `/ws?agent=true` additionally routes each final transcript through `server/agent.py`, which calls OpenRouter (`OPENROUTER_API_KEY` in `.env`) with tool schemas from `server/tools.py` (currently `open_app`, `open_url` — deliberately no raw shell execution, since arguments come from an untrusted voice transcript). Results come back as a `{"type": "agent", "reply": ..., "actions": [...]}` message; the Electron client skips pasting and shows these in its history list instead.
+- Every transcription (record or live) is persisted by `server/feedback.py` to `data/feedback/` (WAV + row in `metadata.csv`) regardless of user action. `training/prepare_dataset.py --include-feedback` merges rows with a `corrected_text` or `rating == "correct"` into the next dataset build, copying their WAVs into `--data-dir` so file paths stay relative like recorder clips.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `samuelj1323/warble` (via `gh`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five canonical roles, unchanged. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
 
 ## Roadmap
-- Phase 5 is built: React frontend with Record + Live modes and an in-app feedback loop (correct/fix transcriptions → merged into future fine-tunes via `--include-feedback`).
-- Possible next steps: surface feedback-driven WER improvements after a re-train; hands-free wake-word activation for live mode.
+- Phase 5 is built: Electron menu-bar client with live dictation, paste-on-finalize, and a feedback loop (correct/fix transcriptions → merged into future fine-tunes via `--include-feedback`). Agent mode (voice → tool calls via OpenRouter) is built on top of it.
+- Possible next steps: surface feedback-driven WER improvements after a re-train; hands-free wake-word activation for live mode; more agent tools; packaging/signing the Electron app.
