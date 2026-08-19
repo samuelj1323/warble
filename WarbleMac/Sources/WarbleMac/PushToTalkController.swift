@@ -169,9 +169,9 @@ final class PushToTalkController: ObservableObject {
         if isAgentModeEnabled(), let agentRouter {
             let reply = await agentRouter.handle(transcript: transcript)
             transcript = reply
-        } else {
-            let appName = await pasteService?.paste(text: transcript, targetApp: pasteTargetApp())
-            onDictationFinalized?(transcript, appName)
         }
+        // Non-agent dictation is left in `transcript` rather than pasted here:
+        // the composer mirrors it live into its editable field, and only an
+        // explicit Send (submitTypedText) actually pastes/records it.
     }
 }

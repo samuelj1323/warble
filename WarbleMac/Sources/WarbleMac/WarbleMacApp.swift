@@ -253,14 +253,11 @@ struct SessionRowView: View {
 
 /// Renders the current session's turns as chat bubbles, like a messaging app
 /// — you on the right, Warble on the left — scrolling to the newest turn as
-/// the conversation grows. While the mic is live, an in-progress bubble tracks
-/// `controller.transcript` word-for-word instead of waiting for finalization,
-/// so partial dictation shows up as a message updating in place.
+/// the conversation grows. Dictation-in-progress no longer shows here as a
+/// preview bubble: it streams live into the composer's editable text field
+/// instead (see `ComposerView`), so you can adjust it before it's sent.
 struct ChatTranscriptView: View {
     @ObservedObject var session: ChatSession
-    @ObservedObject var controller: PushToTalkController
-
-    private static let liveBubbleID = "live-bubble"
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -269,31 +266,17 @@ struct ChatTranscriptView: View {
                     ForEach(session.messages) { message in
                         ChatBubbleView(message: message)
                     }
-                    if isLive {
-                        ChatBubbleView(message: ChatMessage(id: UUID(), role: .user, text: liveText))
-                            .opacity(0.6)
-                            .id(Self.liveBubbleID)
-                    }
                 }
                 .padding(8)
             }
             .frame(maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
             .onChange(of: session.messages.count) { _, _ in scrollToBottom(proxy) }
-            .onChange(of: controller.transcript) { _, _ in scrollToBottom(proxy) }
         }
     }
 
-    private var isLive: Bool {
-        (controller.isRecording || controller.isTranscribing) && !controller.transcript.isEmpty
-    }
-
-    private var liveText: String { controller.transcript }
-
     private func scrollToBottom(_ proxy: ScrollViewProxy) {
         withAnimation {
-            if isLive {
-                proxy.scrollTo(Self.liveBubbleID, anchor: .bottom)
-            } else if let lastID = session.messages.last?.id {
+            if let lastID = session.messages.last?.id {
                 proxy.scrollTo(lastID, anchor: .bottom)
             }
         }
@@ -331,7 +314,7 @@ struct CenterPanelView: View {
 
             if let controller = appModel.pushToTalk {
                 if let chatSession = history.currentSession {
-                    ChatTranscriptView(session: chatSession, controller: controller)
+                    ChatTranscriptView(session: chatSession)
                 } else {
                     Spacer()
                     Text("Click below to start talking — this begins a new session.")
@@ -457,9 +440,12 @@ struct DiffView: View {
 
 /// Chat-composer-style input row at the bottom of the window: a text field
 /// for typed messages plus a mic button for push-to-talk, so either typing
-/// or speaking can start/continue a session. Typed sends and finalized
-/// dictation both funnel through `PushToTalkController`, so they're recorded
-/// and pasted identically regardless of which one was used.
+/// or speaking can start/continue a session. While recording, the field
+/// mirrors `controller.transcript` word-for-word as it's transcribed, so
+/// dictation lands here to review/edit rather than pasting immediately —
+/// only an explicit Send commits it (paste, or agent dispatch in agent
+/// mode). Typed sends and dictated sends both funnel through
+/// `PushToTalkController.submitTypedText`, so they're handled identically.
 struct ComposerView: View {
     @ObservedObject var controller: PushToTalkController
     @State private var draftText: String = ""
@@ -467,7 +453,7 @@ struct ComposerView: View {
     var body: some View {
         VStack(spacing: 8) {
             HStack(spacing: 8) {
-                TextField("Type a message…", text: $draftText, axis: .vertical)
+                TextField("Type or speak a message…", text: $draftText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
                     .onSubmit(send)
@@ -496,6 +482,10 @@ struct ComposerView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+        }
+        .onChange(of: controller.transcript) { _, newValue in
+            guard controller.isRecording || controller.isTranscribing else { return }
+            draftText = newValue
         }
     }
 
