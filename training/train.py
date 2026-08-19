@@ -185,6 +185,11 @@ def main() -> None:
     trainer.train()
 
     final_dir = args.output_dir / "final"
+    # use_cache=False above is only required during training (gradient
+    # checkpointing); leaving it False in the saved config silently breaks
+    # WhisperKit/CoreML conversion later (incremental-decode tracing reads
+    # config.use_cache directly, unlike generate() which overrides it).
+    model.config.use_cache = True
     trainer.save_model(str(final_dir))  # best checkpoint, thanks to load_best_model_at_end
     processor.save_pretrained(str(final_dir))
     print(f"Saved best model to {final_dir}")

@@ -31,6 +31,11 @@ final class PushToTalkController: ObservableObject {
 
     private var pollTask: Task<Void, Never>?
     private var startDate: Date?
+    /// Audio for the whole recording session, accumulated across silence-triggered
+    /// chunks so feedback logging still captures the full utterance even though
+    /// each chunk's samples are purged from the live audio processor as it's
+    /// transcribed.
+    private var sessionSamples: [Float] = []
 
     init(
         whisperKit: WhisperKit,
@@ -57,6 +62,8 @@ final class PushToTalkController: ObservableObject {
     func start() throws {
         guard !isRecording else { return }
         errorMessage = nil
+        transcript = ""
+        sessionSamples = []
         segmenter.reset()
         startDate = Date()
         isRecording = true
@@ -66,16 +73,16 @@ final class PushToTalkController: ObservableObject {
         }
     }
 
-    /// Manual release: stop capture immediately and transcribe whatever was said.
+    /// Manual release: stop capture immediately, transcribe whatever's left, and finalize.
     func stopAndFinalize() async {
         guard isRecording else { return }
-        await finalize()
+        await finalize(isFinal: true)
     }
 
     /// Hotkey-driven start/stop: starts if idle, finalizes if recording.
     func toggle() async {
         if isRecording {
-            await finalize()
+            await finalize(isFinal: true)
         } else if !isTranscribing {
             try? start()
         }
@@ -94,38 +101,57 @@ final class PushToTalkController: ObservableObject {
                 silenceThreshold: silenceThreshold
             )
 
+            // Trailing silence transcribes the chunk spoken so far and appends it
+            // to `transcript`, but keeps recording — like a streamed transcript —
+            // so a pause mid-thought doesn't drop whatever's said next. Only an
+            // explicit stop (toggle/stopAndFinalize) ends the session.
             if segmenter.tick(isSpeech: isSpeech, elapsed: elapsed) == .finalize {
-                await finalize()
-                return
+                await finalize(isFinal: false)
             }
         }
     }
 
-    private func finalize() async {
-        pollTask?.cancel()
-        pollTask = nil
-        isRecording = false
-        audioProcessor.stopRecording()
+    private func finalize(isFinal: Bool) async {
+        // Don't cancel pollTask here: when silence auto-finalizes, this method
+        // runs inside pollTask itself, and cancelling your own running task
+        // makes the transcribe() call below throw CancellationError.
+        if isFinal {
+            pollTask = nil
+            isRecording = false
+            audioProcessor.stopRecording()
+        }
 
-        let samples = Array(audioProcessor.audioSamples)
-        guard !samples.isEmpty else { return }
+        let chunkSamples = Array(audioProcessor.audioSamples)
+        audioProcessor.purgeAudioSamples(keepingLast: 0)
+        segmenter.reset()
+        startDate = Date()
 
-        isTranscribing = true
-        defer { isTranscribing = false }
-
-        do {
-            let results = try await whisperKit.transcribe(audioArray: samples)
-            transcript = results.map(\.text).joined(separator: " ")
-            _ = try? feedbackStore?.add(samples: samples, source: "live", predictedText: transcript)
-            if isAgentModeEnabled(), let agentRouter {
-                let reply = await agentRouter.handle(transcript: transcript)
-                transcript = reply
-            } else {
-                pasteService?.paste(text: transcript)
-                onDictationFinalized?(transcript)
+        if !chunkSamples.isEmpty {
+            sessionSamples.append(contentsOf: chunkSamples)
+            isTranscribing = true
+            do {
+                let results = try await whisperKit.transcribe(audioArray: chunkSamples)
+                let chunkText = results.map(\.text).joined(separator: " ")
+                if !chunkText.isEmpty {
+                    transcript = transcript.isEmpty ? chunkText : "\(transcript) \(chunkText)"
+                }
+            } catch {
+                errorMessage = "Transcription failed: \(error)"
             }
-        } catch {
-            errorMessage = "Transcription failed: \(error)"
+            isTranscribing = false
+        }
+
+        guard isFinal, !sessionSamples.isEmpty else { return }
+
+        _ = try? feedbackStore?.add(samples: sessionSamples, source: "live", predictedText: transcript)
+        sessionSamples = []
+
+        if isAgentModeEnabled(), let agentRouter {
+            let reply = await agentRouter.handle(transcript: transcript)
+            transcript = reply
+        } else {
+            pasteService?.paste(text: transcript)
+            onDictationFinalized?(transcript)
         }
     }
 }

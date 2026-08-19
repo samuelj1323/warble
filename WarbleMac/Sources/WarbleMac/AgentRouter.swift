@@ -18,14 +18,14 @@ final class AgentRouter: @unchecked Sendable {
     private let tts: TTSService
     private let classify: Classifier
     private let runCodeChange: ((String) async -> String)?
-    private let onDispatch: ((AgentIntent, String) -> Void)?
+    private let onDispatch: ((String, AgentIntent, String) -> Void)?
 
     init(
         tools: MacControlTools,
         tts: TTSService,
         classify: @escaping Classifier,
         runCodeChange: ((String) async -> String)? = nil,
-        onDispatch: ((AgentIntent, String) -> Void)? = nil
+        onDispatch: ((String, AgentIntent, String) -> Void)? = nil
     ) {
         self.tools = tools
         self.tts = tts
@@ -53,7 +53,7 @@ final class AgentRouter: @unchecked Sendable {
         }
 
         tts.speak(reply)
-        onDispatch?(intent, reply)
+        onDispatch?(transcript, intent, reply)
         return reply
     }
 

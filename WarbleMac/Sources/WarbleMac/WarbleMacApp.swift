@@ -38,7 +38,6 @@ final class AppModel: ObservableObject {
         let session = codeChangeSession ?? ClaudeCodeSession(repoRoot: codeChangeRepoRoot)
         codeChangeSession = session
         await session.run(prompt: prompt)
-        sessionHistory.record(.codeChange)
 
         if let finalResultText = session.finalResultText {
             return finalResultText
@@ -75,11 +74,12 @@ final class AppModel: ObservableObject {
                 runCodeChange: { [weak self] transcript in
                     await self?.runCodeChange(prompt: transcript) ?? "Code-change agent unavailable."
                 },
-                onDispatch: { [weak self] intent, reply in
+                onDispatch: { [weak self] transcript, intent, reply in
                     guard case .codeChange = intent else {
-                        self?.sessionHistory.record(.macControl(reply: reply))
+                        self?.sessionHistory.record(.macControl(transcript: transcript, reply: reply))
                         return
                     }
+                    self?.sessionHistory.record(.codeChange(transcript: transcript, summary: reply))
                 }
             )
             let controller = PushToTalkController(
@@ -145,7 +145,7 @@ struct ContentView: View {
         NavigationSplitView {
             SidebarView(appModel: appModel)
         } detail: {
-            CenterPanelView(appModel: appModel, ttsService: ttsService)
+            CenterPanelView(appModel: appModel, history: appModel.sessionHistory, ttsService: ttsService)
         }
         .task {
             await appModel.loadModelAndReportInfo()
@@ -171,41 +171,131 @@ struct SidebarView: View {
 
             Divider()
 
-            Text("Sessions")
-                .font(.headline)
-            SessionHistoryListView(history: appModel.sessionHistory)
+            HStack {
+                Text("Sessions")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    appModel.sessionHistory.startNewSession()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                }
+                .buttonStyle(.plain)
+                .help("Start a new session")
+            }
+            SessionListView(history: appModel.sessionHistory)
         }
         .padding()
         .frame(minWidth: 220)
     }
 }
 
-struct SessionHistoryListView: View {
+/// Sidebar list of conversation threads — like a messaging app's contact
+/// list: each row is a whole session, selecting one switches the center
+/// panel's chat transcript to that thread.
+struct SessionListView: View {
     @ObservedObject var history: SessionHistory
 
     var body: some View {
-        List(history.entries) { entry in
-            Text(label(for: entry.kind))
-                .font(.caption)
-                .lineLimit(1)
+        List(history.sessions, selection: Binding(
+            get: { history.currentSessionID },
+            set: { history.currentSessionID = $0 }
+        )) { session in
+            SessionRowView(session: session).tag(session.id)
         }
         .listStyle(.sidebar)
     }
+}
 
-    private func label(for kind: SessionEntryKind) -> String {
-        switch kind {
-        case .dictation(let transcript):
-            return "🎙️ \(transcript)"
-        case .macControl(let reply):
-            return "⚙️ \(reply)"
-        case .codeChange:
-            return "🛠️ Code change"
+struct SessionRowView: View {
+    @ObservedObject var session: ChatSession
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(session.title)
+                .font(.caption)
+                .lineLimit(1)
+            if let last = session.messages.last {
+                Text(last.text)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
+        .padding(.vertical, 2)
+    }
+}
+
+/// Renders the current session's turns as chat bubbles, like a messaging app
+/// — you on the right, Warble on the left — scrolling to the newest turn as
+/// the conversation grows. While the mic is live, an in-progress bubble tracks
+/// `controller.transcript` word-for-word instead of waiting for finalization,
+/// so partial dictation shows up as a message updating in place.
+struct ChatTranscriptView: View {
+    @ObservedObject var session: ChatSession
+    @ObservedObject var controller: PushToTalkController
+
+    private static let liveBubbleID = "live-bubble"
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(session.messages) { message in
+                        ChatBubbleView(message: message)
+                    }
+                    if isLive {
+                        ChatBubbleView(message: ChatMessage(id: UUID(), role: .user, text: liveText))
+                            .opacity(0.6)
+                            .id(Self.liveBubbleID)
+                    }
+                }
+                .padding(8)
+            }
+            .frame(maxWidth: .infinity, minHeight: 200, maxHeight: .infinity)
+            .onChange(of: session.messages.count) { _, _ in scrollToBottom(proxy) }
+            .onChange(of: controller.transcript) { _, _ in scrollToBottom(proxy) }
+        }
+    }
+
+    private var isLive: Bool {
+        (controller.isRecording || controller.isTranscribing) && !controller.transcript.isEmpty
+    }
+
+    private var liveText: String { controller.transcript }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        withAnimation {
+            if isLive {
+                proxy.scrollTo(Self.liveBubbleID, anchor: .bottom)
+            } else if let lastID = session.messages.last?.id {
+                proxy.scrollTo(lastID, anchor: .bottom)
+            }
+        }
+    }
+}
+
+struct ChatBubbleView: View {
+    let message: ChatMessage
+
+    var body: some View {
+        HStack {
+            if message.role == .user { Spacer(minLength: 40) }
+            Text(message.text)
+                .font(.caption)
+                .padding(8)
+                .background(message.role == .user ? Color.accentColor.opacity(0.85) : Color.gray.opacity(0.2))
+                .foregroundStyle(message.role == .user ? .white : .primary)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            if message.role == .assistant { Spacer(minLength: 40) }
+        }
+        .id(message.id)
     }
 }
 
 struct CenterPanelView: View {
     @ObservedObject var appModel: AppModel
+    @ObservedObject var history: SessionHistory
     let ttsService: TTSService
 
     var body: some View {
@@ -215,6 +305,16 @@ struct CenterPanelView: View {
                 .foregroundStyle(.secondary)
 
             if let controller = appModel.pushToTalk {
+                if let chatSession = history.currentSession {
+                    ChatTranscriptView(session: chatSession, controller: controller)
+                } else {
+                    Spacer()
+                    Text("Click below to start talking — this begins a new session.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                }
+
                 PushToTalkView(controller: controller)
             } else {
                 ProgressView()
@@ -330,32 +430,22 @@ struct DiffView: View {
     }
 }
 
+/// Just the mic control — the live transcript itself now lives in
+/// `ChatTranscriptView`'s in-progress bubble, so this doesn't duplicate it.
 struct PushToTalkView: View {
     @ObservedObject var controller: PushToTalkController
 
     var body: some View {
-        VStack(spacing: 12) {
-            Button(controller.isRecording ? "Release to stop" : "Hold to talk") {}
-                .buttonStyle(.borderedProminent)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { _ in
-                            guard !controller.isRecording else { return }
-                            try? controller.start()
-                        }
-                        .onEnded { _ in
-                            Task { await controller.stopAndFinalize() }
-                        }
-                )
+        VStack(spacing: 8) {
+            Button(controller.isRecording ? "Click to stop" : "Click to talk") {
+                Task { await controller.toggle() }
+            }
+            .buttonStyle(.borderedProminent)
 
             if let errorMessage = controller.errorMessage {
                 Text(errorMessage)
+                    .font(.caption)
                     .foregroundStyle(.red)
-            }
-
-            ScrollView {
-                Text(controller.transcript)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
