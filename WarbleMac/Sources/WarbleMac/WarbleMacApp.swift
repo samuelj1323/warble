@@ -4,10 +4,29 @@ import WhisperKit
 
 @main
 struct WarbleMacApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+    }
+}
+
+/// A bare `swift run` executable has no `.app` bundle, so macOS launches it as
+/// a process without a proper "regular app" activation policy: its window shows
+/// and looks clickable, but it never becomes the key/frontmost app, so text
+/// fields can't actually hold keyboard focus. Forcing `.regular` policy and
+/// activating at launch makes it behave like a normally-launched GUI app, which
+/// is what lets the composer's text field take (and keep) keyboard input.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        true
     }
 }
 

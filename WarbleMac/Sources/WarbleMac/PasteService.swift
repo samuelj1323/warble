@@ -11,17 +11,20 @@ final class PasteService {
     private let sendPasteKeystroke: () -> Void
     private let frontmostAppName: () -> String?
     private let activate: (NSRunningApplication) -> Void
+    private let reactivateSelf: () -> Void
 
     init(
         pasteboard: NSPasteboard = .general,
         sendPasteKeystroke: @escaping @MainActor () -> Void = PasteService.postCmdV,
         frontmostAppName: @escaping () -> String? = { NSWorkspace.shared.frontmostApplication?.localizedName },
-        activate: @escaping (NSRunningApplication) -> Void = { $0.activate() }
+        activate: @escaping (NSRunningApplication) -> Void = { $0.activate() },
+        reactivateSelf: @escaping @MainActor () -> Void = { NSApp.activate(ignoringOtherApps: true) }
     ) {
         self.pasteboard = pasteboard
         self.sendPasteKeystroke = sendPasteKeystroke
         self.frontmostAppName = frontmostAppName
         self.activate = activate
+        self.reactivateSelf = reactivateSelf
     }
 
     /// Returns the name of the app the text was pasted into (the activated
@@ -37,6 +40,16 @@ final class PasteService {
         pasteboard.clearContents()
         pasteboard.setString(text, forType: .string)
         sendPasteKeystroke()
+
+        // Pasting into a target app steals the frontmost/key status from Warble.
+        // Without pulling it back, the composer text field stops receiving
+        // keystrokes and the user's next typing lands in the app just pasted
+        // into. Give the Cmd+V a beat to be delivered to the target, then
+        // reactivate Warble so the composer stays editable.
+        if targetApp != nil {
+            try? await Task.sleep(nanoseconds: 120_000_000)
+            reactivateSelf()
+        }
         return targetApp?.localizedName ?? frontmostAppName()
     }
 
