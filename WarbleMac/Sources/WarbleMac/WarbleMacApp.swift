@@ -162,6 +162,12 @@ struct ContentView: View {
             CenterPanelView(appModel: appModel, history: appModel.sessionHistory, ttsService: ttsService)
         }
         .task {
+            // Launched processes (e.g. via `swift run` from a script/tool rather
+            // than double-clicked) don't always become the key/frontmost app on
+            // their own, which leaves controls looking clickable but not actually
+            // receiving keyboard focus. Force activation so the window — and the
+            // composer's text field — can actually take input.
+            NSApp.activate(ignoringOtherApps: true)
             await appModel.loadModelAndReportInfo()
         }
     }
@@ -447,6 +453,7 @@ struct ComposerView: View {
     /// the field mid-recording — auto-sync stops so their edit isn't clobbered
     /// by the next chunk.
     @State private var lastSyncedTranscript: String = ""
+    @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 8) {
@@ -469,6 +476,7 @@ struct ComposerView: View {
                 TextField("Type or speak a message…", text: $draftText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
                     .lineLimit(1...4)
+                    .focused($isComposerFocused)
                     .onSubmit(send)
 
                 Button(action: send) {
@@ -495,6 +503,16 @@ struct ComposerView: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
+        }
+        .onAppear {
+            isComposerFocused = true
+        }
+        .onChange(of: controller.isTranscribing) { wasTranscribing, isTranscribing in
+            // Once a chunk finishes transcribing, keyboard focus should be sitting
+            // in the composer field — not wherever it last was — so the highlighted
+            // draft text is immediately editable without an extra click.
+            guard wasTranscribing, !isTranscribing else { return }
+            isComposerFocused = true
         }
         .onChange(of: controller.transcript) { _, newValue in
             guard controller.isRecording || controller.isTranscribing else { return }
