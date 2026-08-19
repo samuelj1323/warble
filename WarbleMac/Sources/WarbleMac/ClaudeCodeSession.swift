@@ -40,10 +40,15 @@ final class ClaudeCodeSession: ObservableObject {
 
     private let repoRoot: String
     private let lineSource: LineSource
-    private var sessionID: String?
+    /// The claude conversation id: captured from the first turn's system init
+    /// event and reused to resume follow-ups. Exposed (read-only) and seedable
+    /// so `ChatSession` can persist it and rehydrate a resumable session after
+    /// a relaunch.
+    private(set) var sessionID: String?
 
-    init(repoRoot: String, lineSource: LineSource? = nil) {
+    init(repoRoot: String, resumeSessionID: String? = nil, lineSource: LineSource? = nil) {
         self.repoRoot = repoRoot
+        self.sessionID = resumeSessionID
         self.lineSource = lineSource ?? Self.realLineSource
     }
 

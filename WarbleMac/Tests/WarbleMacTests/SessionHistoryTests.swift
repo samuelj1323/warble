@@ -3,8 +3,17 @@ import XCTest
 
 @MainActor
 final class SessionHistoryTests: XCTestCase {
+    /// Each test gets a history backed by a throwaway store file, so persistence
+    /// doesn't bleed state between tests or into the real Application Support.
+    private func isolatedHistory() -> SessionHistory {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("warble-tests-\(UUID().uuidString)")
+            .appendingPathComponent("sessions.json")
+        return SessionHistory(store: SessionStore(fileURL: url))
+    }
+
     func testRecordStartsASessionAutomaticallyWhenNoneExists() {
-        let history = SessionHistory()
+        let history = isolatedHistory()
 
         history.record(.dictation(transcript: "hello world", pastedInto: nil))
 
@@ -12,7 +21,7 @@ final class SessionHistoryTests: XCTestCase {
     }
 
     func testRecordAppendsAUserTurnThenAnAssistantTurnToTheCurrentSession() {
-        let history = SessionHistory()
+        let history = isolatedHistory()
 
         history.record(.macControl(transcript: "open safari", reply: "Opened Safari."))
 
@@ -22,7 +31,7 @@ final class SessionHistoryTests: XCTestCase {
     }
 
     func testStartNewSessionBeginsASeparateThread() {
-        let history = SessionHistory()
+        let history = isolatedHistory()
         history.record(.dictation(transcript: "first thread", pastedInto: nil))
         let firstSessionID = history.currentSessionID
 

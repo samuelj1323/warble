@@ -11,24 +11,27 @@ enum AgentIntent {
 /// OpenRouter round-trip with on-device classification (no network call).
 /// The `classify` closure defaults to nothing usable in tests — production
 /// wiring supplies the real Foundation Models-backed classifier.
-final class AgentRouter: @unchecked Sendable {
+///
+/// `@MainActor`-isolated: its dispatch/`onDispatch`/`runCodeChange` callbacks
+/// reach into MainActor state (session history, the code-change session, the
+/// app model), so `handle` must run on the main actor. All call sites already
+/// `await` it from MainActor contexts.
+@MainActor
+final class AgentRouter {
     typealias Classifier = (String) async -> AgentIntent
 
     private let tools: MacControlTools
-    private let tts: TTSService
     private let classify: Classifier
     private let runCodeChange: ((String) async -> String)?
     private let onDispatch: ((String, AgentIntent, String) -> Void)?
 
     init(
         tools: MacControlTools,
-        tts: TTSService,
         classify: @escaping Classifier,
         runCodeChange: ((String) async -> String)? = nil,
         onDispatch: ((String, AgentIntent, String) -> Void)? = nil
     ) {
         self.tools = tools
-        self.tts = tts
         self.classify = classify
         self.runCodeChange = runCodeChange
         self.onDispatch = onDispatch
@@ -52,7 +55,6 @@ final class AgentRouter: @unchecked Sendable {
             reply = text
         }
 
-        tts.speak(reply)
         onDispatch?(transcript, intent, reply)
         return reply
     }
