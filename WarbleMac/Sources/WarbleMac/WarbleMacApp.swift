@@ -183,17 +183,6 @@ struct SidebarView: View {
                 TextField("/path/to/scratch-repo", text: $appModel.codeChangeRepoRoot)
             }
 
-            VStack(alignment: .leading) {
-                Text("Paste into:")
-                Picker("", selection: $appModel.pasteTargetApp) {
-                    Text("Focused app").tag(Optional<NSRunningApplication>.none)
-                    ForEach(appModel.pasteTargetOptions, id: \.processIdentifier) { app in
-                        Text(app.localizedName ?? "Unknown app").tag(Optional(app))
-                    }
-                }
-                .labelsHidden()
-            }
-
             Divider()
 
             HStack {
@@ -323,7 +312,7 @@ struct CenterPanelView: View {
                     Spacer()
                 }
 
-                ComposerView(controller: controller)
+                ComposerView(controller: controller, appModel: appModel)
             } else {
                 ProgressView()
             }
@@ -438,20 +427,44 @@ struct DiffView: View {
     }
 }
 
-/// Chat-composer-style input row at the bottom of the window: a text field
-/// for typed messages plus a mic button for push-to-talk, so either typing
-/// or speaking can start/continue a session. While recording, the field
-/// mirrors `controller.transcript` word-for-word as it's transcribed, so
-/// dictation lands here to review/edit rather than pasting immediately —
-/// only an explicit Send commits it (paste, or agent dispatch in agent
-/// mode). Typed sends and dictated sends both funnel through
-/// `PushToTalkController.submitTypedText`, so they're handled identically.
+/// Chat-composer-style input row at the bottom of the window: a paste-target
+/// picker above a text field plus a mic button for push-to-talk, so either
+/// typing or speaking can start/continue a session. While recording, the
+/// field mirrors `controller.transcript` word-for-word as it's transcribed,
+/// so dictation lands here to review/edit rather than pasting immediately —
+/// only an explicit Send commits it (paste into the target app below, or
+/// agent dispatch in agent mode). Typed sends and dictated sends both funnel
+/// through `PushToTalkController.submitTypedText`, so they're handled
+/// identically.
 struct ComposerView: View {
     @ObservedObject var controller: PushToTalkController
+    @ObservedObject var appModel: AppModel
     @State private var draftText: String = ""
+    /// The last value auto-written into `draftText` from a live transcript
+    /// update. As long as `draftText` still equals this, the field hasn't
+    /// been hand-edited, so it's safe to keep overwriting it as new chunks
+    /// of speech are transcribed. Once the two diverge — the user typed into
+    /// the field mid-recording — auto-sync stops so their edit isn't clobbered
+    /// by the next chunk.
+    @State private var lastSyncedTranscript: String = ""
 
     var body: some View {
         VStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Text("Paste into:")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("", selection: $appModel.pasteTargetApp) {
+                    Text("Focused app").tag(Optional<NSRunningApplication>.none)
+                    ForEach(appModel.pasteTargetOptions, id: \.processIdentifier) { app in
+                        Text(app.localizedName ?? "Unknown app").tag(Optional(app))
+                    }
+                }
+                .labelsHidden()
+                .font(.caption)
+                Spacer()
+            }
+
             HStack(spacing: 8) {
                 TextField("Type or speak a message…", text: $draftText, axis: .vertical)
                     .textFieldStyle(.roundedBorder)
@@ -485,7 +498,14 @@ struct ComposerView: View {
         }
         .onChange(of: controller.transcript) { _, newValue in
             guard controller.isRecording || controller.isTranscribing else { return }
+            guard draftText == lastSyncedTranscript else { return }
             draftText = newValue
+            lastSyncedTranscript = newValue
+        }
+        .onChange(of: controller.isRecording) { _, isRecording in
+            guard isRecording, draftText == lastSyncedTranscript else { return }
+            draftText = ""
+            lastSyncedTranscript = ""
         }
     }
 
@@ -493,6 +513,7 @@ struct ComposerView: View {
         let text = draftText
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         draftText = ""
+        lastSyncedTranscript = ""
         Task { await controller.submitTypedText(text) }
     }
 }
