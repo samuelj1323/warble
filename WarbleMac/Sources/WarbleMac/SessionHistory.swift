@@ -4,7 +4,7 @@ import Foundation
 /// Each case carries both what was said and how it was resolved, so it can be
 /// split into a user turn and an assistant turn.
 enum SessionEntryKind: Equatable {
-    case dictation(transcript: String)
+    case dictation(transcript: String, pastedInto: String?)
     case macControl(transcript: String, reply: String)
     case codeChange(transcript: String, summary: String)
 }
@@ -66,9 +66,9 @@ final class SessionHistory: ObservableObject {
         let session = currentSession ?? startNewSession()
 
         switch kind {
-        case .dictation(let transcript):
+        case .dictation(let transcript, let pastedInto):
             session.append(role: .user, text: transcript)
-            session.append(role: .assistant, text: "Pasted into focused app.")
+            session.append(role: .assistant, text: "Pasted into \(pastedInto ?? "focused app").")
         case .macControl(let transcript, let reply):
             session.append(role: .user, text: transcript)
             session.append(role: .assistant, text: reply)

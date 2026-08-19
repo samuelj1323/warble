@@ -2,27 +2,34 @@ import AppKit
 import XCTest
 @testable import WarbleMac
 
+@MainActor
 final class PasteServiceTests: XCTestCase {
-    func testPasteWritesTextToPasteboard() {
+    func testPasteWritesTextToPasteboard() async {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("com.warble.test.\(UUID().uuidString)"))
         var keystrokeSent = false
-        let service = PasteService(pasteboard: pasteboard, sendPasteKeystroke: { keystrokeSent = true })
+        let service = PasteService(
+            pasteboard: pasteboard,
+            sendPasteKeystroke: { keystrokeSent = true },
+            frontmostAppName: { "TestApp" }
+        )
 
-        service.paste(text: "hello world")
+        let appName = await service.paste(text: "hello world")
 
         XCTAssertEqual(pasteboard.string(forType: .string), "hello world")
         XCTAssertTrue(keystrokeSent)
+        XCTAssertEqual(appName, "TestApp")
     }
 
-    func testPasteWithEmptyTextDoesNothing() {
+    func testPasteWithEmptyTextDoesNothing() async {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("com.warble.test.\(UUID().uuidString)"))
         pasteboard.setString("preexisting", forType: .string)
         var keystrokeSent = false
         let service = PasteService(pasteboard: pasteboard, sendPasteKeystroke: { keystrokeSent = true })
 
-        service.paste(text: "")
+        let appName = await service.paste(text: "")
 
         XCTAssertEqual(pasteboard.string(forType: .string), "preexisting")
         XCTAssertFalse(keystrokeSent)
+        XCTAssertNil(appName)
     }
 }

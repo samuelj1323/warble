@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import WhisperKit
 
@@ -19,7 +20,19 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(codeChangeRepoRoot, forKey: "codeChangeRepoRoot") }
     }
     @Published private(set) var codeChangeSession: ClaudeCodeSession?
+    /// The app dictated/typed text pastes into. Nil means "whatever currently
+    /// has focus" (the historical default); picking a specific app here
+    /// activates it before pasting instead.
+    @Published var pasteTargetApp: NSRunningApplication?
     let sessionHistory = SessionHistory()
+
+    /// Running, regular (Dock-visible) apps other than Warble itself, offered
+    /// as explicit paste targets in the sidebar picker.
+    var pasteTargetOptions: [NSRunningApplication] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
+            .sorted { ($0.localizedName ?? "") < ($1.localizedName ?? "") }
+    }
 
     private var hotkeyManager: HotkeyManager?
     private var trayIcon: TrayIconController?
@@ -88,8 +101,9 @@ final class AppModel: ObservableObject {
                 pasteService: PasteService(),
                 agentRouter: agentRouter,
                 isAgentModeEnabled: { [weak self] in self?.isAgentMode ?? false },
-                onDictationFinalized: { [weak self] transcript in
-                    self?.sessionHistory.record(.dictation(transcript: transcript))
+                pasteTargetApp: { [weak self] in self?.pasteTargetApp },
+                onDictationFinalized: { [weak self] transcript, appName in
+                    self?.sessionHistory.record(.dictation(transcript: transcript, pastedInto: appName))
                 }
             )
             pushToTalk = controller
@@ -167,6 +181,17 @@ struct SidebarView: View {
             VStack(alignment: .leading) {
                 Text("Code-change repo root:")
                 TextField("/path/to/scratch-repo", text: $appModel.codeChangeRepoRoot)
+            }
+
+            VStack(alignment: .leading) {
+                Text("Paste into:")
+                Picker("", selection: $appModel.pasteTargetApp) {
+                    Text("Focused app").tag(Optional<NSRunningApplication>.none)
+                    ForEach(appModel.pasteTargetOptions, id: \.processIdentifier) { app in
+                        Text(app.localizedName ?? "Unknown app").tag(Optional(app))
+                    }
+                }
+                .labelsHidden()
             }
 
             Divider()
@@ -315,7 +340,7 @@ struct CenterPanelView: View {
                     Spacer()
                 }
 
-                PushToTalkView(controller: controller)
+                ComposerView(controller: controller)
             } else {
                 ProgressView()
             }
@@ -430,17 +455,41 @@ struct DiffView: View {
     }
 }
 
-/// Just the mic control — the live transcript itself now lives in
-/// `ChatTranscriptView`'s in-progress bubble, so this doesn't duplicate it.
-struct PushToTalkView: View {
+/// Chat-composer-style input row at the bottom of the window: a text field
+/// for typed messages plus a mic button for push-to-talk, so either typing
+/// or speaking can start/continue a session. Typed sends and finalized
+/// dictation both funnel through `PushToTalkController`, so they're recorded
+/// and pasted identically regardless of which one was used.
+struct ComposerView: View {
     @ObservedObject var controller: PushToTalkController
+    @State private var draftText: String = ""
 
     var body: some View {
         VStack(spacing: 8) {
-            Button(controller.isRecording ? "Click to stop" : "Click to talk") {
-                Task { await controller.toggle() }
+            HStack(spacing: 8) {
+                TextField("Type a message…", text: $draftText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(1...4)
+                    .onSubmit(send)
+
+                Button(action: send) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.title2)
+                }
+                .buttonStyle(.plain)
+                .disabled(draftText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .help("Send")
+
+                Button {
+                    Task { await controller.toggle() }
+                } label: {
+                    Image(systemName: controller.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(controller.isRecording ? .red : Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .help(controller.isRecording ? "Click to stop" : "Click to talk")
             }
-            .buttonStyle(.borderedProminent)
 
             if let errorMessage = controller.errorMessage {
                 Text(errorMessage)
@@ -448,5 +497,12 @@ struct PushToTalkView: View {
                     .foregroundStyle(.red)
             }
         }
+    }
+
+    private func send() {
+        let text = draftText
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        draftText = ""
+        Task { await controller.submitTypedText(text) }
     }
 }

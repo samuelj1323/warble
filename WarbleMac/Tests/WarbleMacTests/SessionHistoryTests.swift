@@ -6,7 +6,7 @@ final class SessionHistoryTests: XCTestCase {
     func testRecordStartsASessionAutomaticallyWhenNoneExists() {
         let history = SessionHistory()
 
-        history.record(.dictation(transcript: "hello world"))
+        history.record(.dictation(transcript: "hello world", pastedInto: nil))
 
         XCTAssertEqual(history.sessions.count, 1)
     }
@@ -23,15 +23,15 @@ final class SessionHistoryTests: XCTestCase {
 
     func testStartNewSessionBeginsASeparateThread() {
         let history = SessionHistory()
-        history.record(.dictation(transcript: "first thread"))
+        history.record(.dictation(transcript: "first thread", pastedInto: nil))
         let firstSessionID = history.currentSessionID
 
         history.startNewSession()
-        history.record(.dictation(transcript: "second thread"))
+        history.record(.dictation(transcript: "second thread", pastedInto: "Safari"))
 
         XCTAssertEqual(history.sessions.count, 2)
         XCTAssertNotEqual(history.currentSessionID, firstSessionID)
         XCTAssertEqual(history.sessions[0].messages.map(\.text), ["first thread", "Pasted into focused app."])
-        XCTAssertEqual(history.sessions[1].messages.map(\.text), ["second thread", "Pasted into focused app."])
+        XCTAssertEqual(history.sessions[1].messages.map(\.text), ["second thread", "Pasted into Safari."])
     }
 }

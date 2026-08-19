@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import WhisperKit
 
@@ -27,7 +28,8 @@ final class PushToTalkController: ObservableObject {
     private let pasteService: PasteService?
     private let agentRouter: AgentRouter?
     private let isAgentModeEnabled: () -> Bool
-    private let onDictationFinalized: ((String) -> Void)?
+    private let pasteTargetApp: () -> NSRunningApplication?
+    private let onDictationFinalized: ((String, String?) -> Void)?
 
     private var pollTask: Task<Void, Never>?
     private var startDate: Date?
@@ -46,7 +48,8 @@ final class PushToTalkController: ObservableObject {
         pasteService: PasteService? = nil,
         agentRouter: AgentRouter? = nil,
         isAgentModeEnabled: @escaping () -> Bool = { false },
-        onDictationFinalized: ((String) -> Void)? = nil
+        pasteTargetApp: @escaping () -> NSRunningApplication? = { nil },
+        onDictationFinalized: ((String, String?) -> Void)? = nil
     ) {
         self.whisperKit = whisperKit
         self.audioProcessor = audioProcessor
@@ -56,7 +59,24 @@ final class PushToTalkController: ObservableObject {
         self.pasteService = pasteService
         self.agentRouter = agentRouter
         self.isAgentModeEnabled = isAgentModeEnabled
+        self.pasteTargetApp = pasteTargetApp
         self.onDictationFinalized = onDictationFinalized
+    }
+
+    /// Submits typed text (from the chat composer) the same way a finalized
+    /// spoken utterance is handled: routed through the agent if agent mode is
+    /// on, otherwise pasted into the configured target app (or whatever has
+    /// focus) and recorded to session history.
+    func submitTypedText(_ text: String) async {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        if isAgentModeEnabled(), let agentRouter {
+            _ = await agentRouter.handle(transcript: trimmed)
+        } else {
+            let appName = await pasteService?.paste(text: trimmed, targetApp: pasteTargetApp())
+            onDictationFinalized?(trimmed, appName)
+        }
     }
 
     func start() throws {
@@ -150,8 +170,8 @@ final class PushToTalkController: ObservableObject {
             let reply = await agentRouter.handle(transcript: transcript)
             transcript = reply
         } else {
-            pasteService?.paste(text: transcript)
-            onDictationFinalized?(transcript)
+            let appName = await pasteService?.paste(text: transcript, targetApp: pasteTargetApp())
+            onDictationFinalized?(transcript, appName)
         }
     }
 }
